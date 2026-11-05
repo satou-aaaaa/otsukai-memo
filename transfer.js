@@ -1,21 +1,23 @@
 // 引き継ぎコード（transfer.js）：このゲームの記録を「コード」と「QR」にして、別の端末へ移す。サーバーは使わない。
-// 引き継ぎの版: 1
+// 引き継ぎの版: 3
 // 正：satou-aaaaa/shared-workflows の template/transfer.js（各ゲームはこれをそのまま写す。直すときはひな形を直して配り、版を上げる）
 // 使い方（index.html の <head> の中、ゲームの script より前に、defer を付けずに置く）:
 //   <script src="transfer.js" data-game="kippu-10" data-keys="kippu-v1"></script>
 //   data-keys はカンマ区切り。最後が * のものは「その文字で始まるキー全部」（例 xdoko-*）。
+//   書くのはこのゲームの記録のキーだけ（a11y-v1 のような全部のゲームで分け合う設定は入れない。取り込むと別のゲームの設定まで変わる）。
 //   押すと開く所に data-hk を付ける（<a href="#" data-hk>引き継ぎ</a> など）。JS からは HK.open()。
 // しくみ:
 //   - 書き出し：記録（localStorage のうち data-keys に合うもの）を JSON → deflate-raw で縮める → base64url。
 //     形は HK1.<中身>.<CRC32>（縮められないブラウザは HK0）。QR は「このページの URL#hk=コード」。
 //     URL の # より後ろはサーバーへ送られない（MDN「URL: hash」）ので、記録は外へ出ない。
-//   - 取り込み：形・CRC・ゲームの名前・キーの名前・大きさを確かめてから、確認の画面を出す。
+//   - 取り込み：形・CRC・ゲームの名前・キーの名前・大きさ・HTML に使う文字（< > " ' `）が無いかを確かめてから、確認の画面を出す。
+//     ゲームは記録を innerHTML に入れることが多いので、作ったコードで画面にスクリプトを入れられないようにする（版2、CodeRabbit の指摘）。
 //     入れ替える前の記録は控え（hk-backup:<ゲーム>）に残し、「取り込む前に戻す」で戻せる（戻すのも入れ替えなので、もう一度押せばまた戻る）。
 //     ゲームが記録を読む前に入れ替えたいので、sessionStorage に預けてページを読み直し、この script の最初で書き込む。
 //   - 外へ通信しない（fetch・XMLHttpRequest・外のスクリプトを使わない）。QR は下の qrcode-generator（MIT）をこのファイルの中で作る。
 (function () {
   "use strict";
-  var VERSION = 1;
+  var VERSION = 3;
   var me = document.currentScript;
   var cfg = window.HK_CONFIG || {};
   var GAME = cfg.game || (me && me.dataset.game) || "";
@@ -25,8 +27,10 @@
   var DONE = "hk-done:" + GAME;
   var MAX_JSON = 4 * 1024 * 1024; // localStorage はおおよそ 5MB まで
   var QR_MAX = 2300; // QR（誤り訂正 L・40型）に入る URL の長さのめやす
-  if (!GAME || !KEYS.length || KEYS.some(function (k) { return k === "*" || /^hk-/.test(k); })) {
-    console.error("transfer.js: data-game と data-keys を書く（* だけ・hk- で始まるキーは使えない）");
+  // 全部のゲームで分け合うキー（見やすさの設定）。入れると、取り込んだときにほかのゲームの設定まで変わる
+  var SHARED = ["a11y-v1"];
+  if (!GAME || !KEYS.length || KEYS.some(function (k) { return k === "*" || /^hk-/.test(k) || SHARED.indexOf(k) >= 0 || (k.slice(-1) === "*" && "a11y-v1".indexOf(k.slice(0, -1)) === 0); })) {
+    console.error("transfer.js: data-game と data-keys を書く（* だけ・hk- で始まるキー・分け合う a11y-v1 は使えない）");
     return;
   }
 
@@ -113,10 +117,46 @@
     old: "このブラウザでは読めないコードです。ブラウザを新しくするか、書き出した端末でもう一度作ってください。",
     game: "別のゲームのコードです。",
     keys: "このゲームの記録ではない中身が入っています。",
+    bad: "記録に使わない文字が入っています。書き出した端末でもう一度作ってください。",
     big: "記録が大きすぎます。",
     newer: "新しい版の引き継ぎコードです。ページを読み直して（アプリを開き直して）から試してください。",
   };
+  // 記録の中の文字に、HTML の印になる文字が無いか（JSON ならキーと文字の値を全部見る）
+  var HTMLCH = /[<>"'`]/;
+  function unsafe(v) {
+    var o;
+    try { o = JSON.parse(v); } catch (e) { return HTMLCH.test(v); }
+    var stack = [o];
+    while (stack.length) {
+      var x = stack.pop();
+      if (typeof x === "string") { if (HTMLCH.test(x)) return true; }
+      else if (x && typeof x === "object") {
+        for (var k in x) { if (HTMLCH.test(k)) return true; stack.push(x[k]); }
+      }
+    }
+    return false;
+  }
   function fail(kind) { var e = new Error(ERR[kind]); e.kind = kind; return e; }
+  // 縮めたコードを、読みながら大きさを数えて広げる。MAX_JSON を超えたらそこでやめる
+  // （小さなコードが何百MBにも膨らむと、開いただけでタブが固まるため。版3、CodeRabbit の指摘）
+  function inflate(bytes) {
+    var reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+    var parts = [], total = 0;
+    function next() {
+      return reader.read().then(function (r) {
+        if (r.done) {
+          var out = new Uint8Array(total), at = 0;
+          parts.forEach(function (p) { out.set(p, at); at += p.length; });
+          return out;
+        }
+        total += r.value.length;
+        if (total > MAX_JSON) { try { reader.cancel(); } catch (e) { /* なし */ } throw fail("big"); }
+        parts.push(r.value);
+        return next();
+      });
+    }
+    return next();
+  }
   function decode(text) {
     return Promise.resolve().then(function () {
       var s = clean(text);
@@ -127,7 +167,7 @@
       try { bytes = unb64(m[2]); } catch (e) { throw fail("form"); }
       if (crc32(bytes) !== m[3]) throw fail("crc");
       if (m[1] === "1" && typeof DecompressionStream !== "function") throw fail("old");
-      return (m[1] === "1" ? pipe(bytes, new DecompressionStream("deflate-raw")) : Promise.resolve(bytes)).catch(function () { throw fail("form"); });
+      return (m[1] === "1" ? inflate(bytes) : Promise.resolve(bytes)).catch(function (e) { throw e && e.kind ? e : fail("form"); });
     }).then(function (raw) {
       if (raw.length > MAX_JSON) throw fail("big");
       var o;
@@ -140,6 +180,7 @@
       keys.forEach(function (k) {
         if (!ours(k) || typeof o.d[k] !== "string") throw fail("keys");
       });
+      keys.forEach(function (k) { if (unsafe(o.d[k])) throw fail("bad"); });
       var at = new Date(o.at);
       return { d: o.d, at: isNaN(at) ? null : at };
     });
@@ -154,10 +195,14 @@
     try {
       var job = JSON.parse(p);
       var cur = snapshot();
-      replaceAll(job.d);
-      // いまの記録を控えに残す（空なら控えは作らない。前の控えも消さない）
-      if (count(cur)) { try { localStorage.setItem(BACKUP, JSON.stringify({ at: new Date().toISOString(), d: cur })); } catch (e) { /* 控えが入らないときも入れ替えは済んでいる */ } }
-      else if (job.undo) { try { localStorage.removeItem(BACKUP); } catch (e) { /* なし */ } }
+      // 先にいまの記録を控えに残す（空なら控えは作らない。前の控えも消さない）。控えを書けなければ入れ替えない
+      var prev = localStorage.getItem(BACKUP);
+      if (count(cur)) localStorage.setItem(BACKUP, JSON.stringify({ at: new Date().toISOString(), d: cur }));
+      try { replaceAll(job.d); } catch (e) {
+        try { if (prev == null) localStorage.removeItem(BACKUP); else localStorage.setItem(BACKUP, prev); } catch (e2) { /* なし */ }
+        throw e;
+      }
+      if (!count(cur) && job.undo) { try { localStorage.removeItem(BACKUP); } catch (e) { /* なし */ } }
       msg = job.undo ? "取り込む前の記録に戻しました" : "記録を引き継ぎました";
     } catch (e) {
       msg = "引き継げませんでした（端末の空きが足りないかもしれません）。記録は元のままです";

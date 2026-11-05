@@ -182,8 +182,8 @@ footer a{color:var(--ink2);min-height:44px;display:inline-flex;align-items:cente
 /* all:unset のボタンでも、キーボードで選んだときの枠が消えないよう、いちばん最後に強く書く */
 :is(.icon,button,a):focus-visible{outline:3px solid var(--blue)!important;outline-offset:2px}
 </style>
-<script src="transfer.js" data-game="otsukai-memo" data-keys="otsukai-v1,otsukai-fs,a11y-v1"></script>
-<!-- a11y:begin 見やすさの設定 v2（shared-workflows template/a11y/a11y.html の写し。ここでは直さず、ひな形を直して全部のゲームへ写す。drift-check と qa/a11y.mjs が同じ中身か見る） -->
+<script src="transfer.js" data-game="otsukai-memo" data-keys="otsukai-v1,otsukai-fs"></script>
+<!-- a11y:begin 見やすさの設定 v3（shared-workflows template/a11y/a11y.html の写し。ここでは直さず、ひな形を直して全部のゲームへ写す。drift-check と qa/a11y.mjs が同じ中身か見る） -->
 <style id="a11y-css">
 /* だれでも：キーボードで選んだ所に太い枠（WCAG 2.4.7・2.4.13） */
 :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #1a5fd0!important;outline-offset:2px!important;box-shadow:0 0 0 5px #fff!important}
@@ -210,6 +210,8 @@ html:not(.a11y-ruby) ruby.a11y-rb>rt{display:none}
 .a11y-dlg button,.a11y-btn,.a11y-saybtn{min-height:44px;min-width:44px;border-radius:10px;border:2px solid #1d2320;background:#fff;color:#1d2320;font:700 15px/1.2 "BIZ UDPGothic","Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif;padding:0 14px;cursor:pointer;letter-spacing:0}
 .a11y-dlg button.a11y-ok{background:#1d2320;color:#fff}
 .a11y-btn.a11y-float{position:fixed;left:max(8px,env(safe-area-inset-left,0px));bottom:max(8px,env(safe-area-inset-bottom,0px));z-index:2147483000}
+/* 読み上げボタンが、いちばん下のボタン・リンクにかぶらないよう下をあける */
+html.a11y-say body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))!important}
 .a11y-saybtn{position:fixed;right:max(8px,env(safe-area-inset-right,0px));bottom:max(8px,env(safe-area-inset-bottom,0px));z-index:2147483000;box-shadow:0 2px 8px #0003}
 .a11y-saybtn[hidden],.a11y-dlg [hidden]{display:none!important}
 .a11y-note{font-size:13px!important}
@@ -448,7 +450,8 @@ const footer = () => `<footer><a href="#" id="f-how">遊び方</a><a href="#" id
 function bindFooter() { const h = $("f-how"); if (h) h.onclick = (e) => { e.preventDefault(); openHow(); }; const a = $("f-about"); if (a) a.onclick = (e) => { e.preventDefault(); about(); }; }
 function openHow() { $("fb2").href = FEEDBACK; const d = $("howto"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
 $("howto-ok").onclick = () => { const d = $("howto"); d.close ? d.close() : d.removeAttribute("open"); save((s) => { s.tut = true; }); };
-const itemBtn = (id, cls = "") => { const it = BY[id]; return `<button class="item g${it.g} ${cls}" data-id="${id}" aria-label="${it.n}">${`<span class="e" aria-hidden="true">${it.e}</span><span class="n">${it.n}</span>`}</button>`; };
+// pressed を渡すと、選んだ・選んでいないを読み上げに伝える（思い出しの棚。続きから開いたときも）
+const itemBtn = (id, cls = "", pressed) => { const it = BY[id]; return `<button class="item g${it.g} ${cls}" data-id="${id}" aria-label="${it.n}"${pressed === undefined ? "" : ` aria-pressed="${pressed}"`}>${`<span class="e" aria-hidden="true">${it.e}</span><span class="n">${it.n}</span>`}</button>`; };
 const toTop = () => window.scrollTo(0, 0);
 
 function home() {
@@ -520,8 +523,16 @@ function startRun(mode, opt) {
 // cur：{ i, stage: "memo"|"shelf"|"pay"|"recall", got:[かごに入れた品], ng:[まちがえて押した品], miss, hints, calc, sel:[思い出しで選んだ品] }
 let cur = null, typed = "";
 const same = (r) => r && cur && r.id === cur.id && r.res.length === cur.i; // 保存した進み具合が、この画面と同じ回か
-// 途中の様子を保存する（ヒント・まちがいの数は、別のタブで数えた分より減らさない）
-function keep() { save((s) => { const r = s.runs[MODE]; if (!same(r)) return; const w = r.cur && r.cur.i === cur.i ? r.cur : null; if (w) for (const q of ["miss", "hints", "calc"]) cur[q] = Math.max(cur[q] || 0, w[q] || 0); r.cur = { i: cur.i, stage: cur.stage, got: cur.got.slice(), ng: cur.ng.slice(), miss: cur.miss, hints: cur.hints, calc: cur.calc, sel: cur.sel.slice(), hl: cur.hl || null }; }); }
+// 途中の様子の控え。この画面が最後に読んだ・書いた中身と、保存の中身が同じか比べる（同じ回で別のタブが品を選んだのを、古い画面で消さない）
+const sig = (c) => (c ? JSON.stringify([c.i, c.stage, c.got, c.ng, c.sel, c.miss, c.hints, c.calc]) : "");
+const live = () => { const r = load().runs[MODE]; return same(r) && sig(r.cur) === cur.seen; };
+// 途中の様子を保存する。別のタブが先に書いていたら書かずに、保存の中身で画面を作り直す（false を返す）
+function keep() {
+  let ok = false;
+  save((s) => { const r = s.runs[MODE]; if (!same(r) || sig(r.cur) !== cur.seen) return; r.cur = { i: cur.i, stage: cur.stage, got: cur.got.slice(), ng: cur.ng.slice(), miss: cur.miss, hints: cur.hints, calc: cur.calc, sel: cur.sel.slice(), hl: cur.hl || null }; cur.seen = sig(r.cur); ok = true; });
+  if (!ok) { toast("別の画面で先に進んでいます"); play(); }
+  return ok;
+}
 function play() {
   const s = load(), run = s.runs[MODE];
   if (!run) return home();
@@ -529,7 +540,7 @@ function play() {
   if (run.mode === "a" && s.days[run.date]) { save((s2) => { delete s2.runs[MODE]; }); toast("この日は別の画面で遊び終えています"); return home(); }
   const i = run.res.length, trip = run.list[i];
   const sv = run.cur && run.cur.i === i ? run.cur : null;
-  cur = { id: run.id, i, stage: sv ? sv.stage : trip.k === "recall" ? "recall" : "memo", got: sv ? sv.got.filter((x) => trip.items.includes(x)) : [], ng: sv ? (sv.ng || []).filter((x) => trip.shelf.includes(x)) : [], miss: sv ? sv.miss || 0 : 0, hints: sv ? sv.hints || 0 : 0, calc: sv ? sv.calc || 0 : 0, sel: sv ? (sv.sel || []).filter((x) => trip.shelf.includes(x)) : [], hl: sv ? sv.hl || null : null };
+  cur = { id: run.id, i, stage: sv ? sv.stage : trip.k === "recall" ? "recall" : "memo", got: sv ? sv.got.filter((x) => trip.items.includes(x)) : [], ng: sv ? (sv.ng || []).filter((x) => trip.shelf.includes(x)) : [], miss: sv ? sv.miss || 0 : 0, hints: sv ? sv.hints || 0 : 0, calc: sv ? sv.calc || 0 : 0, sel: sv ? (sv.sel || []).filter((x) => trip.shelf.includes(x)) : [], hl: sv ? sv.hl || null : null, seen: sig(run.cur) };
   typed = "";
   if (cur.stage === "done") return endTrip(trip); // お会計を終えて次へ進む前に閉じた回
   if (cur.stage === "memo") memoView(run, trip);
@@ -556,7 +567,7 @@ function memoView(run, trip) {
     <button class="main ok" id="ready">覚えた！お店へ行く</button>
     <p class="note">時間制限はありません。お店に入るとメモは見られません。</p>`;
   $("back").onclick = home;
-  $("ready").onclick = () => { if (!same(load().runs[MODE])) return play(); cur.stage = "shelf"; keep(); shelfView(load().runs[MODE], trip); };
+  $("ready").onclick = () => { if (!live()) return play(); cur.stage = "shelf"; if (keep()) shelfView(load().runs[MODE], trip); };
   toTop();
 }
 function shelfView(run, trip) {
@@ -580,22 +591,23 @@ function hintHtml(trip) {
   return `<div class="hint">のこりは <b>${gs.join("・")}</b> の売り場にあります${cur.hints >= 2 ? "。光っている品も、メモにありました" : ""}</div>`;
 }
 function shelfHint(trip) {
-  if (cur.hints >= 2 || !same(load().runs[MODE])) return;
+  if (cur.hints >= 2) return;
+  if (!live()) { toast("別の画面で先に進んでいます"); return play(); }
   cur.hints++;
   if (cur.hints === 2) { const rest = trip.items.filter((x) => !cur.got.includes(x)); cur.hl = rest[0] || null; }
-  keep(); shelfView(load().runs[MODE], trip); buzz();
+  if (keep()) { shelfView(load().runs[MODE], trip); buzz(); }
 }
 function pickItem(b, trip) {
   const id = b.dataset.id;
   if (cur.got.includes(id) || cur.ng.includes(id)) return;
-  if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  if (!live()) { toast("別の画面で先に進んでいます"); return play(); }
   const m = $("msg");
   if (trip.items.includes(id)) {
     cur.got.push(id); if (cur.hl === id) cur.hl = null; b.className = `item g${BY[id].g} got`; buzz();
     m.className = "msg ok"; m.textContent = `${BY[id].n}、ありました！`;
     $("basket").innerHTML = `<span class="lbl">かご</span>${cur.got.map((x) => `<span aria-label="${BY[x].n}">${BY[x].e}</span>`).join("")}<span class="lbl" style="margin-left:auto">のこり ${trip.items.length - cur.got.length}品</span>`;
     if (cur.got.length >= trip.items.length) {
-      cur.stage = trip.pay === "none" ? "done" : "pay"; keep();
+      cur.stage = trip.pay === "none" ? "done" : "pay"; if (!keep()) return;
       document.querySelectorAll("#shelf .item").forEach((x) => (x.disabled = true)); $("hint").disabled = true;
       if (cur.stage === "pay") { setTimeout(() => { if (cur && cur.stage === "pay" && $("shelf")) payView(load().runs[MODE], trip); }, 700); }
       else endTrip(trip);
@@ -628,15 +640,15 @@ function padKey(d, trip) {
 }
 function payCheck(trip) {
   if (!typed) return;
-  if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  if (!live()) { toast("別の画面で先に進んでいます"); return play(); }
   const want = trip.pay === "change" ? trip.paid - trip.total : trip.total, got = +typed, m = $("msg");
-  if (got === want) { buzz([10, 40, 10]); cur.stage = "done"; keep(); return endTrip(trip); }
+  if (got === want) { buzz([10, 40, 10]); cur.stage = "done"; return keep() && endTrip(trip); }
   cur.calc++; buzz(40); typed = ""; $("disp").innerHTML = `0<span class="u">円</span>`;
   if (cur.calc >= 2) {
     // 2回まちがえたら、計算のしかたを見せて先へ（いつまでも止めない）
     const how = trip.items.map((id) => BY[id].p).join("＋") + `＝${yen(trip.total)}` + (trip.pay === "change" ? `、${yen(trip.paid)}−${yen(trip.total)}＝${yen(want)}` : "");
     m.className = "msg ng"; m.innerHTML = `答えは <b>${yen(want)}</b> でした。<br><small>${esc(how)}</small>`;
-    cur.stage = "done"; keep();
+    cur.stage = "done"; if (!keep()) return;
     $("pad").innerHTML = ""; $("pad").insertAdjacentHTML("afterend", `<button class="main" id="go-next">次へ</button>`);
     $("go-next").onclick = () => endTrip(trip);
   } else { m.className = "msg ng"; m.textContent = got > want ? "少し多いようです。もう一度計算してみましょう" : "少し足りないようです。もう一度計算してみましょう"; keep(); }
@@ -645,7 +657,7 @@ function payCheck(trip) {
 function endTrip(trip) {
   let r = null;
   const s = save((s) => {
-    r = s.runs[MODE]; if (!same(r)) { r = null; return; }
+    r = s.runs[MODE]; if (!same(r) || sig(r.cur) !== cur.seen) { r = null; return; }
     r.res.push({ k: "buy", m: cur.miss, h: cur.hints, c: cur.calc }); r.cur = null;
     for (const id of trip.items) s.dex[id] = (s.dex[id] || 0) + 1;
     s.trips = (s.trips || 0) + 1; if (trip.pay !== "none" && cur.calc === 0) s.calc = (s.calc || 0) + 1;
@@ -678,10 +690,11 @@ function recallView(run, trip) {
   app.innerHTML = `${headOf(run, "最後の思い出し")}
     <p class="big" style="font-size:1.15rem">1回目のおつかいで買った品は？</p>
     <p class="note">${trip.items.length}品あります。全部選んで「これで決める」を押してください。押し直すと外せます。</p>
-    <div class="shelf c${cols}" id="shelf">${trip.shelf.map((id) => itemBtn(id, cur.sel.includes(id) ? "sel" : "")).join("")}</div>
+    <div class="shelf c${cols}" id="shelf">${trip.shelf.map((id) => itemBtn(id, cur.sel.includes(id) ? "sel" : "", cur.sel.includes(id))).join("")}</div>
     <button class="main ok" id="decide"${cur.sel.length ? "" : " disabled"}>これで決める（${cur.sel.length}/${trip.items.length}）</button>`;
   $("back").onclick = home;
   document.querySelectorAll("#shelf .item").forEach((b) => (b.onclick = () => {
+    if (!live()) { toast("別の画面で先に進んでいます"); return play(); }
     const id = b.dataset.id, j = cur.sel.indexOf(id);
     if (j >= 0) cur.sel.splice(j, 1); else if (cur.sel.length < trip.items.length) cur.sel.push(id); else return toast(`選べるのは${trip.items.length}品までです`);
     b.classList.toggle("sel", cur.sel.includes(id)); b.setAttribute("aria-pressed", cur.sel.includes(id)); buzz(6);
@@ -691,9 +704,11 @@ function recallView(run, trip) {
   toTop();
 }
 function recallDone(trip) {
-  if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  if (!live()) { toast("別の画面で先に進んでいます"); return play(); }
   const ok = cur.sel.filter((x) => trip.items.includes(x)).length, ng = cur.sel.length - ok;
-  save((s) => { const r = s.runs[MODE]; if (!same(r)) return; r.res.push({ k: "recall", ok, of: trip.items.length, ng }); r.cur = null; });
+  let saved = false;
+  save((s) => { const r = s.runs[MODE]; if (!same(r) || sig(r.cur) !== cur.seen) return; saved = true; r.res.push({ k: "recall", ok, of: trip.items.length, ng }); r.cur = null; });
+  if (!saved) { toast("別の画面で先に進んでいます"); return play(); }
   document.querySelectorAll("#shelf .item").forEach((b) => { const id = b.dataset.id, on = cur.sel.includes(id), want = trip.items.includes(id); b.disabled = true; b.classList.remove("sel"); if (on && want) b.classList.add("got"); else if (on) b.classList.add("ng"); else if (want) b.classList.add("miss"); });
   $("decide").outerHTML = `<div class="verdict" role="status"><p class="big">${ok === trip.items.length && !ng ? "全部思い出せました！" : `${trip.items.length}品のうち ${ok}品 思い出せました`}</p>
     <p class="note">${ok < trip.items.length ? "点線の品が、思い出せなかった品です。" : "あとから思い出すのは、覚えた直後より難しいものです。"}</p>

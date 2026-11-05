@@ -47,6 +47,14 @@
     // メモの品は売り場が3つ以上にまたがるように選ぶ（同じ売り場ばかりにしない）
     let list = pool.slice(0, n);
     for (let tries = 0; tries < 20 && new Set(list.map((id) => BY[id].g)).size < Math.min(3, n); tries++) list = shuffled(pool, R).slice(0, n);
+    // それでも足りないときは、乱数を引かずに入れかえる（重なっている売り場の品を、まだ無い売り場の品に）
+    for (const id of pool) {
+      const gs = list.map((x) => BY[x].g);
+      if (new Set(gs).size >= Math.min(3, n)) break;
+      if (list.includes(id) || gs.includes(BY[id].g)) continue;
+      const j = gs.findIndex((g, k) => gs.indexOf(g) !== k);
+      if (j >= 0) list[j] = id;
+    }
     const size = shelfSize(n), rest = pool.filter((id) => !list.includes(id));
     const same = rest.filter((id) => list.some((x) => BY[x].g === BY[id].g)), other = rest.filter((id) => !same.includes(id));
     // まぎらわしい品を半分ほど、のこりはほかの売り場から。ほかの売り場が足りなければ同じ売り場で埋める

@@ -43,6 +43,8 @@ mkdirSync(path.join(root, "qa-report"), { recursive: true });
     if (h.length !== 3 || !ok(hb[0], 6, 12) || !ok(hb[1], 7, 12) || hb.some((t) => t.pay !== "change" || !(t.paid > t.total) || (t.paid - t.total > 1000 && t.paid !== 5000)) || h[2].k !== "recall" || h[2].shelf.length !== 12) bad.push(k + " 上級の形");
     if (hb.some((t) => t.items.some((x) => buys.some((b) => b.items.includes(x)))) || new Set(hb.flatMap((t) => t.items)).size !== 13) bad.push(k + " 上級の重なり");
   }
+  { let bad2 = 0; for (const R of [() => 0, () => 0.999999, () => 0.5]) for (let n = 3; n <= 12; n++) { const tr = OM.makeTrip(R, n, [], "sum"); if (new Set(tr.items.map((x) => OM.BY[x].g)).size < Math.min(3, n)) bad2++; }
+    check("乱数がかたよっても、メモの品は3つ以上の売り場にまたがる（入れかえの守り）", bad2 === 0, String(bad2)); }
   check("今日のおつかいは毎日 3品・4品・5品（棚9・9・12）と思い出し。上級は6品・7品（棚12・おつり）と思い出し（3年分）", bad.length === 0, bad.slice(0, 4).join(","));
   check("日ごとにちがうおつかいになる（3年分で同じ日が無い）", new Set(days).size === days.length);
   check("同じ日付なら何度作っても同じ", JSON.stringify(OM.dailyList("2027-03-01")) === JSON.stringify(OM.dailyList("2027-03-01")) && JSON.stringify(OM.hardList("2027-03-01")) === JSON.stringify(OM.hardList("2027-03-01")));
@@ -68,6 +70,8 @@ const html = readFileSync(path.join(root, "index.html"), "utf8"), game = readFil
   check("「このゲームについて」に、研究の確かさ（WHO は「勧めてもよい」・根拠はとても低い〜低い）と医療機器でないことを書く", /勧めてもよい/.test(html) && /とても低い〜低い/.test(html) && /医療機器ではなく/.test(html) && /医療機器ではありません|医療機器ではなく/.test(readme));
   const og = (k) => (html.match(new RegExp(`<meta (?:property|name)="${k}" content="([^"]+)"`)) || [])[1] || "";
   const png = readFileSync(path.join(root, "og.png"));
+  { const src = readFileSync(path.join(root, "tools", "make-og.cjs"), "utf8"); const hit = OM.ITEMS.filter((it) => src.includes(it[2]) || src.includes(it[1]));
+    check("SNS 用の絵に、ゲームの品（今日のメモに出うる品）を入れない", hit.length === 0, hit.map((it) => it[2]).join(",")); }
   check("SNS で貼ると絵と題が出る（OGP・1200×630・絶対URL）", og("og:title") && og("og:description") && og("og:image") === "https://satou-aaaaa.github.io/otsukai-memo/og.png" && og("twitter:card") === "summary_large_image" && png.readUInt32BE(16) === 1200 && png.readUInt32BE(20) === 630);
   const fy = readFileSync(path.join(root, ".github/ISSUE_TEMPLATE/feedback.yml"), "utf8");
   check("感想フォームの name が3字以上（2字だと白紙の Issue になる。shared-workflows incidents/2026-11-05-feedback-form-not-shown.md）", [...((fy.match(/^name:\s*(.+)$/m) || [])[1] || "").trim()].length >= 3 && /^description:\s*\S/m.test(fy));
@@ -161,6 +165,8 @@ try {
   await pg.click(`#shelf .item[data-id="${t.items[0]}"]`); await pg.click(`#shelf .item[data-id="${t.items[0]}"]`);
   check("思い出しは押し直すと外せる", (await pg.locator("#shelf .item.sel").count()) === 0 && await pg.locator("#decide").isDisabled());
   await pg.click(`#shelf .item[data-id="${t.items[0]}"]`); await pg.click(`#shelf .item[data-id="${t.items[1]}"]`); await pg.click(`#shelf .item[data-id="${t.shelf.find((x) => !t.items.includes(x))}"]`);
+  await pg.reload(); await pg.click("#go-d"); await pg.waitForSelector("#decide");
+  check("思い出しを続きから開くと、選んだ品は読み上げでも選択中（aria-pressed）", (await pg.locator('#shelf .item[aria-pressed="true"]').count()) === 3 && (await pg.locator('#shelf .item[aria-pressed="false"]').count()) === 6);
   await pg.click("#decide");
   check("思い出しの答え合わせ：思い出せなかった品に点線・ちがう品に✕", (await pg.locator("#shelf .item.miss").count()) === 1 && (await pg.locator("#shelf .item.ng").count()) === 1 && (await pg.textContent(".verdict")).includes("2品"));
   await pg.click("#next");
@@ -258,6 +264,19 @@ try {
     await p1.click(`#shelf .item[data-id="${tt.items[0]}"]`);
     const sx = await p1.evaluate(() => window.__om.load().runs.d);
     check("別のタブで先に進んだあと、古いタブで押しても二重に入れない", sx.res.length === 1 && !(sx.cur && sx.cur.got && sx.cur.got.length));
+    await p2.close(); await p1.close(); }
+  // 12b. 同じ回で別のタブが品を選んだら、古い画面からはその品を消さない（2026-11-05 CodeRabbit）
+  { const p1 = await pageAt(D); await p1.click("#howto-ok"); await p1.click("#go-d"); await p1.click("#ready");
+    const p2 = await p1.context().newPage(); p2.on("pageerror", (e) => errors.push(e.stack)); await p2.goto(url); await p2.click("#go-d"); await p2.waitForSelector("#shelf");
+    const tt = await trip(p1);
+    await p1.click(`#shelf .item[data-id="${tt.items[0]}"]`);
+    await p2.click(`#shelf .item[data-id="${tt.items[1]}"]`);
+    const sx = await p2.evaluate(() => window.__om.load().runs.d.cur);
+    check("古いタブで選んでも、別のタブで選んだ品を消さない", sx && sx.got.length === 1 && sx.got[0] === tt.items[0]);
+    await p2.waitForSelector(`#shelf .item.got[data-id="${tt.items[0]}"]`);
+    check("古いタブは保存の中身で作り直す", (await p2.$$("#shelf .item.got")).length === 1);
+    await p2.reload(); await p2.click("#go-d"); await p2.waitForSelector("#shelf");
+    check("読み直しても、先に選んだ品が残る", (await p2.$$(`#shelf .item.got[data-id="${tt.items[0]}"]`)).length === 1);
     await p2.close(); await p1.close(); }
 
   // 13. 文字の大きさ・スマホ幅
