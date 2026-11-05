@@ -1,0 +1,7 @@
+{
+  "screens": [
+    { "name": "メモ", "click": ["#go-d"] },
+    { "name": "棚", "click": ["#go-d", "#ready"] },
+    { "name": "このゲームについて", "click": ["#f-about"] }
+  ]
+}

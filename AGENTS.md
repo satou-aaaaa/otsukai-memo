@@ -32,6 +32,7 @@ node qa/run.mjs   # 品物のデータ・1日の組み方（3年分）・通し�
 - 外へ通信しない。外から読むのは Google Fonts の文字だけ（CSP の `connect-src 'self'` を広げない）。記録は遊ぶ人のブラウザ（localStorage）だけ。
 - 同じ日はどの端末でも同じ問題にする：乱数は `sort` の比較の中で引かない（QA が見る）。少し遅れて動く処理（setTimeout）は、画面が替わっていたら何もしない。
 - 機能を足す・直すたびに `qa/run.mjs` に検査を足す。乱数で組む部分は何年分も作って確かめる（shared-workflows `incidents/2026-10-31-roppo-empty-village.md`）。
+- 引き継ぎコード（`transfer.js`・`qa/transfer-check.mjs`）は shared-workflows の `template/` の写し。ここでは直さず、ひな形を直して写し直す。`data-keys` は `otsukai-v1,otsukai-fs,a11y-v1`（記録の形を変えたら `qa/run.mjs` の引き継ぎの `sample` も合わせる）。
 - PWA（`manifest.webmanifest`・`sw.js`・`icon-*.png`）：画面のファイルを足したら `sw.js` の `SHELL` にも足し、中身を大きく変えたら `CACHE` の版を上げる。アイコンは `node tools/make-icons.cjs`、SNS 用の絵 `og.png` は `node tools/make-og.cjs`（今日の品を入れない）。
 - 公開リポジトリなので、個人情報・鍵を入れない。
 

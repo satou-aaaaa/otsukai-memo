@@ -6,6 +6,8 @@ import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { checkTransfer } from "./transfer-check.mjs";
+import { spawnSync } from "node:child_process";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const url = pathToFileURL(path.join(root, "index.html")).href;
@@ -72,7 +74,7 @@ const html = readFileSync(path.join(root, "index.html"), "utf8"), game = readFil
   check("感想フォームは名前・メールを聞かない", /id: fun/.test(fy) && /id: good/.test(fy) && /id: fix/.test(fy) && !/id: (name|email|mail)/.test(fy) && /labels: \["感想"\]/.test(fy));
   const sw = readFileSync(path.join(root, "sw.js"), "utf8"), mf = JSON.parse(readFileSync(path.join(root, "manifest.webmanifest"), "utf8"));
   const shell = JSON.parse(sw.match(/SHELL = (\[[^\]]+\])/)[1]);
-  check("PWA：sw.js は画面のファイルを全部保存し、外へ何も送らない", ["./index.html", "./game.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"].every((f) => shell.includes(f)) && !/https?:\/\//.test(sw.replace(/^\/\/.*$/gm, "")) && /k\.startsWith\("otsukai-"\)/.test(sw));
+  check("PWA：sw.js は画面のファイルを全部保存し（引き継ぎの transfer.js も）、外へ何も送らない", ["./index.html", "./game.js", "./transfer.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"].every((f) => shell.includes(f)) && !/https?:\/\//.test(sw.replace(/^\/\/.*$/gm, "")) && /k\.startsWith\("otsukai-"\)/.test(sw));
   check("PWA：manifest にアイコン2つと名前がある", mf.name === "おつかいメモ" && mf.icons.length >= 2 && mf.start_url === "./");
   check("README の URL のすぐ後ろに全角の字を続けない（Link check が URL の一部と読む）", !/https?:\/\/[\x21-\x7e]*[^\x00-\x7f]/.test(readme.replace(/\]\(https?:\/\/[^)\s]+\)/g, "").replace(/<https?:\/\/[^>\s]+>/g, "")));
   check("hidden を使う要素が出たままにならない（[hidden]{display:none}）", /\[hidden\]\{display:none!important\}/.test(html));
@@ -293,8 +295,16 @@ try {
     check("キーボードで選んだボタンに枠が出る", bad.length === 0, bad.join(","));
     await pf.close();
   } catch (e) { check("キーボードで選んだボタンに枠が出る", false, e.message.split("\n")[0]); }
+  // 引き継ぎコード（別の端末へ記録を移す。shared-workflows template/qa/transfer-check.mjs）
+  try {
+    const sample = { "otsukai-v1": JSON.stringify({ v: 1, days: { "2026-11-10": { m: [0, 1, 0], h: [0, 0, 0], c: [0, 0, 0], r: [3, 3, 0] } }, hdays: {}, adays: {}, dex: { carrot: 2, apple: 1 }, runs: {}, tut: true, kofi: {}, ebest: 5, calc: 3, trips: 3, t: 1 }), "otsukai-fs": "2" };
+    await checkTransfer({ browser, url, game: "otsukai-memo", sample, check, open: async (p) => { if (await p.locator("#howto[open]").count()) await p.click("#howto-ok"); } }); // 初めての端末では遊び方が開いているので閉じてから
+  } catch (e) { check("引き継ぎの検査が最後まで完了する", false, e.message.split("\n")[0]); }
   await browser.close();
 }
+// 見やすさ・読みやすさ（shared-workflows template/qa/a11y.mjs。コントラスト・字間・動き・枠・決めつけの言葉など）
+{ const a = spawnSync(process.execPath, [path.join(root, "qa/a11y.mjs")], { encoding: "utf8", env: process.env });
+  check("見やすさの検査（qa/a11y.mjs）が通る", a.status === 0, (a.stdout || "").split("\n").filter((l) => l.startsWith("- ❌")).join(" ").slice(0, 400) || (a.stderr || "").slice(0, 200)); }
 check("画面のエラーが無い", errors.length === 0, errors.slice(0, 3).join(" | "));
 
 const ng = results.filter((r) => !r.ok);
