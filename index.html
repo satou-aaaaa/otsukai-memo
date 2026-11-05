@@ -352,8 +352,10 @@ const { BY, IDS, GROUPS } = OM;
 
 // ---- 文字の大きさ（この端末だけ。記録とは別に置く）----
 function fsGet() { try { const v = +localStorage.getItem(FSKEY); return v >= 1 && v <= 3 ? v : 1; } catch (e) { return 1; } }
-function fsSet(v) { try { localStorage.setItem(FSKEY, String(v)); } catch (e) {} document.documentElement.className = "fs" + v; }
-document.documentElement.className = "fs" + fsGet();
+// 文字の大きさの class だけを入れ替える（見やすさの設定の a11y-read などを消さない）
+const fsApply = (v) => { const c = document.documentElement.classList; c.remove("fs1", "fs2", "fs3"); c.add("fs" + v); };
+function fsSet(v) { try { localStorage.setItem(FSKEY, String(v)); } catch (e) {} fsApply(v); }
+fsApply(fsGet());
 
 // ---- 日付（日本時間。だれでも同じおつかい）----
 const jstNow = () => new Date(Date.now() + 9 * 3600e3);
@@ -562,7 +564,7 @@ function tripLabel(run) { const n = run.list.filter((t) => t.k === "buy").length
 function memoView(run, trip) {
   const tip = run.mode === "p" || run.mode === "e" ? OM.TIPS[(run.res.length + run.id.length) % OM.TIPS.length] : OM.TIP_OF(run.date, EPOCH), ex = tip.ex(trip.items);
   app.innerHTML = `${headOf(run, tripLabel(run))}${stepBar(trip)}
-    <div class="memo" id="memo"><h2>おつかいメモ（${trip.items.length}品）</h2><ul>${trip.items.map((id, j) => `<li style="animation-delay:${j * 0.12}s"><span class="e" aria-hidden="true">${BY[id].e}</span>${BY[id].n}</li>`).join("")}</ul></div>
+    <div class="memo" id="memo" data-a11y-say><h2>おつかいメモ（${trip.items.length}品）</h2><ul>${trip.items.map((id, j) => `<li style="animation-delay:${j * 0.12}s"><span class="e" aria-hidden="true">${BY[id].e}</span>${BY[id].n}</li>`).join("")}</ul></div>
     <div class="tip" id="tip">💡 覚え方のコツ：<b>${tip.t}</b><br>${tip.d}${ex ? `<span class="ex">${esc(ex)}</span>` : ""}</div>
     <button class="main ok" id="ready">覚えた！お店へ行く</button>
     <p class="note">時間制限はありません。お店に入るとメモは見られません。</p>`;
@@ -573,10 +575,10 @@ function memoView(run, trip) {
 function shelfView(run, trip) {
   const cols = trip.shelf.length > 12 ? 4 : 3, left = trip.items.length - cur.got.length;
   app.innerHTML = `${headOf(run, tripLabel(run))}${stepBar(trip)}
-    <p class="big" style="font-size:1.15rem">メモにあった品を、棚から選んでください</p>
+    <p class="big" data-a11y-say style="font-size:1.15rem">メモにあった品を、棚から選んでください</p>
     <div class="shelf c${cols}" id="shelf">${trip.shelf.map((id) => itemBtn(id, cur.got.includes(id) ? "got" : cur.ng.includes(id) ? "ng" : cur.hl === id ? "glow" : "")).join("")}</div>
     <div class="basket" id="basket" aria-live="polite"><span class="lbl">かご</span>${cur.got.length ? cur.got.map((id) => `<span aria-label="${BY[id].n}">${BY[id].e}</span>`).join("") : `<span class="ph">まだ空です</span>`}<span class="lbl" style="margin-left:auto">のこり ${left}品</span></div>
-    <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="msg" id="msg" data-a11y-say aria-live="polite"></div>
     <div id="hintbox">${hintHtml(trip)}</div>
     <div class="row"><button class="sub" id="hint"${cur.hints >= 2 ? " disabled" : ""}>ヒント${run.mode === "e" ? "（🧺を使わない）" : ""}</button></div>`;
   $("back").onclick = home;
@@ -622,9 +624,9 @@ function payView(run, trip) {
   app.innerHTML = `${headOf(run, tripLabel(run))}${stepBar(trip)}
     <div class="receipt" id="receipt">${trip.items.map((id) => `<div><span>${BY[id].e} ${BY[id].n}</span><span class="price">${yen(BY[id].p)}</span></div>`).join("")}
       ${ch ? `<div class="tot"><span>${yen(trip.paid)}札で払います</span><span></span></div>` : ""}</div>
-    <p class="big" style="font-size:1.2rem" id="q">${ch ? "おつりはいくら？" : "合計はいくら？"}</p>
+    <p class="big" data-a11y-say style="font-size:1.2rem" id="q">${ch ? "おつりはいくら？" : "合計はいくら？"}</p>
     <div class="disp" id="disp" aria-live="polite">${typed || "0"}<span class="u">円</span></div>
-    <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="msg" id="msg" data-a11y-say aria-live="polite"></div>
     <div class="pad" id="pad">${["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => `<button data-d="${d}">${d}</button>`).join("")}<button class="del" data-d="del" aria-label="1字消す">消す</button><button data-d="0">0</button><button class="go" data-d="go">決める</button></div>
     <p class="note">紙に書いて計算してもかまいません。</p>`;
   $("back").onclick = home;
@@ -672,7 +674,7 @@ function endTrip(trip) {
   const nextRecall = !fin && run.list[run.res.length] && run.list[run.res.length].k === "recall";
   const say = cur.miss + cur.hints + cur.calc === 0 ? "ばっちり！" : cur.miss + cur.hints === 0 ? "メモは全部覚えていました" : "おつかい完了";
   app.innerHTML = `${headOf(run, "")}
-    <div class="verdict" role="status"><p class="big">${say} ${starStr(st)}</p>
+    <div class="verdict" role="status"><p class="big" data-a11y-say>${say} ${starStr(st)}</p>
       <div class="basket" style="justify-content:center;font-size:1.8rem">${trip.items.map((id) => `<span aria-label="${BY[id].n}">${BY[id].e}</span>`).join("")}</div>
       <p class="note">まちがい ${cur.miss}・ヒント ${cur.hints}${trip.pay !== "none" ? `・お会計 ${cur.calc ? `${cur.calc}回やり直し` : "一度で正解"}` : ""}</p>
       ${run.mode === "e" ? `<p class="note">${cur.miss + cur.hints === 0 ? `一度で覚えました。次は ${run.len}品のメモです。` : `🧺を1つ使いました。次も ${run.len}品です。`}</p>` : ""}
@@ -688,7 +690,7 @@ function endTrip(trip) {
 function recallView(run, trip) {
   const cols = trip.shelf.length > 12 ? 4 : 3;
   app.innerHTML = `${headOf(run, "最後の思い出し")}
-    <p class="big" style="font-size:1.15rem">1回目のおつかいで買った品は？</p>
+    <p class="big" data-a11y-say style="font-size:1.15rem">1回目のおつかいで買った品は？</p>
     <p class="note">${trip.items.length}品あります。全部選んで「これで決める」を押してください。押し直すと外せます。</p>
     <div class="shelf c${cols}" id="shelf">${trip.shelf.map((id) => itemBtn(id, cur.sel.includes(id) ? "sel" : "", cur.sel.includes(id))).join("")}</div>
     <button class="main ok" id="decide"${cur.sel.length ? "" : " disabled"}>これで決める（${cur.sel.length}/${trip.items.length}）</button>`;
@@ -710,7 +712,7 @@ function recallDone(trip) {
   save((s) => { const r = s.runs[MODE]; if (!same(r) || sig(r.cur) !== cur.seen) return; saved = true; r.res.push({ k: "recall", ok, of: trip.items.length, ng }); r.cur = null; });
   if (!saved) { toast("別の画面で先に進んでいます"); return play(); }
   document.querySelectorAll("#shelf .item").forEach((b) => { const id = b.dataset.id, on = cur.sel.includes(id), want = trip.items.includes(id); b.disabled = true; b.classList.remove("sel"); if (on && want) b.classList.add("got"); else if (on) b.classList.add("ng"); else if (want) b.classList.add("miss"); });
-  $("decide").outerHTML = `<div class="verdict" role="status"><p class="big">${ok === trip.items.length && !ng ? "全部思い出せました！" : `${trip.items.length}品のうち ${ok}品 思い出せました`}</p>
+  $("decide").outerHTML = `<div class="verdict" role="status"><p class="big" data-a11y-say>${ok === trip.items.length && !ng ? "全部思い出せました！" : `${trip.items.length}品のうち ${ok}品 思い出せました`}</p>
     <p class="note">${ok < trip.items.length ? "点線の品が、思い出せなかった品です。" : "あとから思い出すのは、覚えた直後より難しいものです。"}</p>
     <button class="main" id="next">結果を見る</button></div>`;
   $("next").onclick = finish; buzz([10, 40, 10]);
@@ -732,7 +734,7 @@ function endFinish(run) {
   save((s2) => { const c = s2.runs.e; if (c && c.id === run.id) delete s2.runs.e; if (Array.isArray(run.a0)) newAch = achGot(s2).filter((id) => !run.a0.includes(id)); });
   const s = load();
   app.innerHTML = `<header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>とことん<small>${run.res.length}回のおつかい</small></h1></header>
-    <p class="big" id="eres">${n ? `${n}品のメモを一度で覚えました` : "おつかいおつかれさまでした"}</p>
+    <p class="big" data-a11y-say id="eres">${n ? `${n}品のメモを一度で覚えました` : "おつかいおつかれさまでした"}</p>
     <p class="note" id="ebest">${n && n >= s.ebest ? "🎉 自己ベストです！" : `自己ベスト ${s.ebest}品`}</p>
     ${newAch.length ? `<p class="achnew" id="achnew">${newAch.map((id) => `🏅 実績：${ACH.find((a) => a[0] === id)[1]}`).join("<br>")}</p>` : ""}
     <div class="rlist">${run.res.map((x, j) => `<div><span class="x">${x.m + x.h === 0 ? "⭕" : "🧺"}</span><span class="w"><b>${run.list[j].items.length}品のメモ</b><br>まちがい ${x.m}・ヒント ${x.h}</span></div>`).join("")}</div>
@@ -755,7 +757,7 @@ function result(mode, k, first, prec, newAch = []) {
   if (showKofi) save((s2) => { s2.kofi[k + mode] = 1; });
   app.innerHTML = `
     <header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>おつかいメモ<small>${mode === "d" ? `今日のおつかい 第${dayNo(k)}日` : late ? `${md(k)} あとから` : mode === "h" ? "上級のおつかい" : "練習"}</small></h1></header>
-    <p class="big">${total === 0 && (mode === "p" || fullRecall(rec)) ? "ばっちりのおつかい！" : "おつかい完了！"}</p>
+    <p class="big" data-a11y-say>${total === 0 && (mode === "p" || fullRecall(rec)) ? "ばっちりのおつかい！" : "おつかい完了！"}</p>
     ${newAch.length ? `<p class="achnew" id="achnew">${newAch.map((id) => `🏅 実績：${ACH.find((a) => a[0] === id)[1]}`).join("<br>")}</p>` : ""}
     ${(() => { const nx = nextAch(s); return nx && mode !== "p" ? `<p class="achnext" id="achnext">🎯 あと${nx.left}${nx.unit}で「${nx.name}」</p>` : ""; })()}
     <div class="rlist">${buys.map((t, j) => `<div><span class="x">${t.items.map((id) => BY[id].e).join("")}</span><span class="w"><b>${t.items.length}品</b> ${starStr(starsOf(rec.m[j] + rec.h[j] + rec.c[j]))}<br>まちがい ${rec.m[j]}・ヒント ${rec.h[j]}・お会計 ${rec.c[j] ? "やり直し" + rec.c[j] : "一度で"}</span></div>`).join("")}

@@ -124,11 +124,17 @@ try {
   // 4. 通しで遊ぶ（まちがい・ヒント・続きから・お会計のやり直しを含む）
   check("初めて開くと遊び方が出る", await pg.locator("#howto[open]").count() === 1);
   await pg.click("#howto-ok");
+  await pg.evaluate(() => document.documentElement.classList.add("a11y-read")); await pg.click('[data-fs="3"]');
+  check("文字の大きさを変えても、見やすさの設定（a11y-read）を消さない", await pg.evaluate(() => document.documentElement.classList.contains("a11y-read") && document.documentElement.classList.contains("fs3") && !document.documentElement.classList.contains("fs1")));
+  await pg.click('[data-fs="1"]'); await pg.evaluate(() => document.documentElement.classList.remove("a11y-read"));
   await pg.click("#go-d");
   let t = await trip(pg);
   check("1回目はメモに3品・覚え方のコツが出る・時間制限なし", (await pg.locator("#memo li").count()) === 3 && (await pg.textContent("#memo")).includes(OM.BY[t.items[0]].n) && (await pg.textContent("#tip")).includes("覚え方のコツ") && !/秒|タイマー|制限時間/.test(await pg.textContent("#app")));
+  const sayOf = () => pg.evaluate(() => [...document.querySelectorAll("[data-a11y-say]")].filter((el) => el.offsetParent).map((el) => el.innerText.trim()).filter(Boolean).join("。"));
+  check("読み上げ（🔊 読む）でメモの品を読める（data-a11y-say）", (await sayOf()).includes(OM.BY[t.items[0]].n));
   await pg.click("#ready");
   check("お店に入るとメモは見えず、棚に9品が出る", (await pg.locator("#memo").count()) === 0 && (await pg.locator("#shelf .item").count()) === 9);
+  check("読み上げ（🔊 読む）で棚の問いを読める", (await sayOf()).includes("棚から選んで"));
   const wrong = t.shelf.find((x) => !t.items.includes(x));
   await pg.click(`#shelf .item[data-id="${wrong}"]`);
   check("メモに無い品を押すと「ありませんでした」と出て、まちがいに数える（ゲームは続く）", (await pg.textContent("#msg")).includes("ありませんでした") && (await run(pg)).cur.miss === 1);
