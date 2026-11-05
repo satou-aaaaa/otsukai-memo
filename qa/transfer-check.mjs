@@ -28,7 +28,7 @@ export async function checkTransfer({ browser, url, game, sample, check, open })
     await h.click();
     await page.waitForSelector(".hk-box");
   };
-  const sizes = async (page) => page.$$eval(".hk-box button, .hk-box label.hk-file", (bs) => bs.filter((b) => b.offsetParent).map((b) => [b.textContent, Math.round(b.getBoundingClientRect().height)]).filter(([, h]) => h < 44));
+  const sizes = async (page) => page.$$eval(".hk-box button, .hk-box label.hk-file", (bs) => bs.filter((b) => b.offsetParent).map((b) => [b.textContent, b.getBoundingClientRect().height]).filter(([, h]) => h < 44));
 
   // 1. 書き出す（端末A）
   const A = await browser.newContext({ viewport: { width: 375, height: 740 } });

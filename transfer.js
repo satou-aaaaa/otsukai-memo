@@ -36,6 +36,7 @@
 
   // ---- 記録の読み書き ----
   function ours(k) {
+    if (/^hk-/.test(k)) return false; // 控え・預け物は「h*」のような書き方でも記録に入れない
     return KEYS.some(function (p) { return p.slice(-1) === "*" ? k.indexOf(p.slice(0, -1)) === 0 : k === p; });
   }
   function snapshot() {
@@ -95,9 +96,11 @@
   function encode(d) {
     var json = JSON.stringify({ g: GAME, v: VERSION, at: new Date().toISOString(), d: d });
     var raw = new TextEncoder().encode(json);
+    // 受け取る側が弾く大きさのコードは作らない（書き出しは成功したのに取り込めない、をなくす）
+    if (raw.length > MAX_JSON) return Promise.reject(fail("big"));
     var z;
     try { z = new CompressionStream("deflate-raw"); } catch (e) { z = null; }
-    var p = z ? pipe(raw, z) : Promise.resolve(null);
+    var p = z ? pipe(raw, z).catch(function () { return null; }) : Promise.resolve(null); // 縮められなければ HK0
     return p.then(function (bytes) {
       var mode = bytes ? "1" : "0";
       bytes = bytes || raw;
@@ -107,7 +110,8 @@
   // 貼られた文字から、コードの部分だけを取り出す（URL ごと貼っても、改行や空白が混じってもよい）
   function clean(text) {
     var s = String(text || "");
-    var m = s.match(/[#&]hk=([^&\s]+)/);
+    // URL の途中で改行されていても、コードに使う文字（と改行）が続くあいだは1つのコードとして取る
+    var m = s.match(/[#&]hk=([A-Za-z0-9_.%-]+(?:[\r\n]+[A-Za-z0-9_.%-]+)*)/);
     if (m) { try { s = decodeURIComponent(m[1]); } catch (e) { s = m[1]; } }
     return s.replace(/\s+/g, "");
   }
@@ -194,6 +198,12 @@
     var msg;
     try {
       var job = JSON.parse(p);
+      // いまの data-keys の外のキー（前の版の控えに入っていた a11y-v1 など）は書かない
+      var d = {};
+      Object.keys(job.d || {}).forEach(function (k) { if (ours(k) && typeof job.d[k] === "string") d[k] = job.d[k]; });
+      // 全部が外のキーだった（中身が空になった）ときは、いまの記録を消さないよう入れ替えない
+      if (!count(d) && count(job.d || {})) throw new Error("data-keys の外のキーだけ");
+      job.d = d;
       var cur = snapshot();
       // 先にいまの記録を控えに残す（空なら控えは作らない。前の控えも消さない）。控えを書けなければ入れ替えない
       var prev = localStorage.getItem(BACKUP);
@@ -234,7 +244,7 @@
     ".hk-file input{position:absolute;width:1px;height:1px;opacity:0}",
     ".hk-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483001;background:#222;color:#fff;padding:12px 18px;border-radius:12px;font:14px/1.5 system-ui,sans-serif;max-width:calc(100% - 32px)}",
   ].join("\n");
-  var back = null, lastFocus = null;
+  var back = null, lastFocus = null, req = 0;
   function el(tag, attrs, kids) {
     var e = document.createElement(tag);
     Object.keys(attrs || {}).forEach(function (k) { if (k === "text") e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); });
@@ -254,6 +264,7 @@
     setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
   }
   function close() {
+    req++; // 読み取り中のコードの結果は、閉じたあとに画面へ出さない
     if (!back) return;
     back.parentNode.removeChild(back);
     back = null;
@@ -315,9 +326,12 @@
     else fallback();
     function fallback() {
       var t = el("textarea");
-      t.value = text; document.body.appendChild(t); t.select();
-      try { document.execCommand("copy"); done(); } catch (e) { /* 手で選んでコピーしてもらう */ }
-      document.body.removeChild(t);
+      var box = back || document.body; // 開いている箱の外は押せない（inert）ことがあるので箱の中に置く
+      t.value = text; box.appendChild(t); t.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      box.removeChild(t);
+      if (ok) done(); else { b.textContent = "下のコードを選んでコピーしてください"; setTimeout(function () { b.textContent = "コピー"; }, 4000); }
     }
   }
   function save(code) {
@@ -343,11 +357,12 @@
       var f = fileIn.files && fileIn.files[0];
       if (!f) return;
       if (f.size > MAX_JSON * 2) { err.textContent = ERR.big; err.hidden = false; return; }
-      f.text().then(function (t) { paste.value = t; tryImport(); });
+      f.text().then(function (t) { paste.value = t; tryImport(); }, function () { err.textContent = ERR.form; err.hidden = false; });
     });
     function tryImport() {
       err.hidden = true;
-      decode(paste.value).then(confirmImport, function (e) { err.textContent = e.kind ? e.message : ERR.form; err.hidden = false; });
+      var my = ++req; // 後から押したほうだけを使う（古い結果で上書きしない）
+      decode(paste.value).then(function (r) { if (my === req) confirmImport(r); }, function (e) { if (my !== req) return; err.textContent = e.kind ? e.message : ERR.form; err.hidden = false; });
     }
     var sendPart = [el("h3", { text: "この端末の記録を送る" })];
     if (!count(d)) sendPart.push(el("p", { text: "まだ記録がありません。" }));
@@ -365,7 +380,7 @@
         var u = url(code);
         if (u.length <= QR_MAX) { try { qr.innerHTML = qrSvg(u); } catch (e) { qr.hidden = true; } }
         else { qr.hidden = true; note.textContent = "記録が多いので QR に入りません。コードをコピーするか、ファイルで送ってください。"; }
-      }, function () { note.textContent = "コードを作れませんでした。"; });
+      }, function (e) { note.textContent = e && e.kind === "big" ? "記録が大きすぎて、コードにできません。" : "コードを作れませんでした。"; });
     }
     var getPart = [
       el("h3", { text: "記録を受け取る" }),
@@ -394,10 +409,12 @@
     ], "#hk-no");
   }
   function confirmUndo(b) {
+    var err = el("p", { class: "hk-err", role: "alert", hidden: "" });
     show([
       el("h2", { id: "hk-title", text: "控えに戻しますか？" }),
       el("p", { text: "今の記録と、" + when(new Date(b.at)).replace("に作った", "の控え") + "を入れ替えます。もう一度押せば、また入れ替わります。" }),
-      el("div", { class: "hk-row" }, [btn("戻す", function () { commit(b.d, true); }, true, "hk-yes"), btn("やめる", close, false, "hk-no")]),
+      err,
+      el("div", { class: "hk-row" }, [btn("戻す", function () { if (!commit(b.d, true)) { err.textContent = "戻せませんでした（ブラウザの設定で保存が止められているかもしれません）。"; err.hidden = false; } }, true, "hk-yes"), btn("やめる", close, false, "hk-no")]),
     ], "#hk-no");
   }
 
@@ -419,7 +436,9 @@
     var h = location.hash.match(/^#hk=(.+)$/);
     if (!h) return;
     history.replaceState(null, "", location.pathname + location.search);
-    decode(h[1]).then(confirmImport, function (e) {
+    var my = ++req;
+    decode(h[1]).then(function (r) { if (my === req) confirmImport(r); }, function (e) {
+      if (my !== req) return;
       show([el("h2", { id: "hk-title", text: "引き継ぎ" }), el("p", { class: "hk-err", role: "alert", text: e.kind ? e.message : ERR.form }),
         el("div", { class: "hk-row" }, [btn("閉じる", close, true, "hk-close")])]);
     });
