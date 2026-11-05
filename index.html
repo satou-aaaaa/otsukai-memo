@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ja" class="fs1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
+<title>おつかいメモ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="買い物メモを覚えて、お店の棚から選び、お会計を計算する。1日3回のおつかいで頭を使う習慣を。時間制限なし、大きな文字で遊べます。">
+<meta name="theme-color" content="#f6efe1">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="おつかいメモ">
+<meta property="og:title" content="おつかいメモ：メモを覚えて、おつかいに行けますか？">
+<meta property="og:description" content="覚える・選ぶ・計算する・思い出す。だれでも同じ1日3回のおつかい。時間制限なし。">
+<meta property="og:url" content="https://satou-aaaaa.github.io/otsukai-memo/">
+<meta property="og:image" content="https://satou-aaaaa.github.io/otsukai-memo/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="おつかいメモ：買い物メモを覚えておつかいに行くゲーム">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* 町の小さなお店：生成りの地、木の棚、黄色い値札、方眼のメモ用紙。高齢の人も読みやすい大きな文字と、はっきりした色の差 */
+:root{
+  --bg:#f6efe1; --paper:#fffdf7; --ink:#2a2420; --ink2:#5c534b; --line:#2a242026;
+  --wood:#b98a5a; --wood2:#8a6038; --tag:#ffd95a; --tag2:#e0b62c; --memo:#fffbea; --grid:#d6e4f0;
+  --red:#c2452d; --red2:#8f2f1e; --ok:#2e7d4f; --ok2:#1f5a38; --blue:#2f5f8f; --gold:#c98d1c;
+  --g0:#e3f1d8; --g1:#fde2d6; --g2:#dceaf6; --g3:#f6e7c9; --g4:#e6e0f4; --g5:#e7ecee;
+  --f-body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  --f-memo:"Klee One","Zen Maru Gothic",serif;
+  color-scheme:light;
+}
+html.fs1{font-size:18px}html.fs2{font-size:21px}html.fs3{font-size:24px}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-weight:500;overflow-x:hidden;-webkit-tap-highlight-color:transparent;line-height:1.6}
+.wrap{max-width:520px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 32px;display:flex;flex-direction:column;gap:14px;min-height:100%;box-sizing:border-box}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px}
+h1{font-weight:900;font-size:1.15rem;margin:0;letter-spacing:.04em;flex:1;min-width:0}
+h1 small{display:block;font-size:.75rem;letter-spacing:0;color:var(--ink2);font-weight:500;line-height:1.3}
+.icon{all:unset;cursor:pointer;font-size:1.2rem;min-width:52px;height:52px;display:grid;place-items:center;border-radius:12px;border:2px solid var(--line);box-sizing:border-box;padding:0 10px;background:var(--paper);font-weight:700}
+button.main,a.main{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;min-height:64px;border-radius:16px;background:var(--red);color:#fff;font-weight:900;font-size:1.1rem;padding:8px 18px;text-align:center;box-shadow:0 5px 0 var(--red2);line-height:1.35;flex-wrap:wrap}
+button.main:active{transform:translateY(3px);box-shadow:0 2px 0 var(--red2)}
+button.main.alt{background:var(--blue);box-shadow:0 5px 0 #1d3d5e}
+button.main.ok{background:var(--ok);box-shadow:0 5px 0 var(--ok2)}
+button.main small{font-weight:500;font-size:.8rem;opacity:.9}
+button.sub,a.sub{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;min-height:56px;border-radius:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);font-weight:700;font-size:.95rem;padding:4px 12px;text-align:center;line-height:1.3}
+button.sub:disabled,button.main:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:10px}.row>.sub,.row>.main{flex:1 1 0}
+.note{color:var(--ink2);font-size:.85rem;line-height:1.7;margin:0;text-align:center}
+.note a,.about a{color:var(--red2);display:inline-flex;align-items:center;min-height:44px}
+.big{font-weight:900;font-size:1.5rem;text-align:center;margin:0;line-height:1.35}
+.step{display:flex;gap:6px;justify-content:center;font-size:.8rem;color:var(--ink2);flex-wrap:wrap}
+.step span{padding:2px 10px;border-radius:99px;border:1.5px solid var(--line)}
+.step span.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.step span.done{background:var(--g0);border-color:var(--ok)}
+/* メモ用紙 */
+.memo{position:relative;background-color:var(--memo);background-image:linear-gradient(var(--grid) 1px,transparent 1px);background-size:100% 2.4rem;background-position:0 1.9rem;border-radius:4px 4px 14px 14px;padding:1.4rem 1.2rem 1rem;box-shadow:0 6px 16px #2a242022,0 1px 0 #2a242014;transform:rotate(-.6deg)}
+.memo::before{content:"";position:absolute;top:-10px;left:50%;width:90px;height:22px;transform:translateX(-50%) rotate(2deg);background:#f3d98ccc;border-radius:3px}
+.memo h2{font-family:var(--f-memo);margin:0 0 .4rem;font-size:1.1rem;color:var(--ink2);font-weight:600}
+.memo ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.memo li{font-family:var(--f-memo);font-size:1.45rem;font-weight:600;min-height:2.4rem;display:flex;align-items:center;gap:.6rem;animation:write .4s ease-out backwards}
+.memo li .e{font-size:1.5rem;width:2rem;text-align:center}
+@keyframes write{from{opacity:0;transform:translateX(-10px)}}
+.tip{background:var(--paper);border:2px dashed var(--gold);border-radius:14px;padding:.7rem 1rem;font-size:.9rem;line-height:1.7}
+.tip b{color:var(--red2)}
+.tip .ex{display:block;margin-top:.3rem;font-family:var(--f-memo);font-size:1.05rem;font-weight:600;color:var(--ink)}
+/* 棚 */
+.shelf{background:linear-gradient(#0000 0,#0000 calc(100% - 10px),var(--wood2) calc(100% - 10px));background-color:#efe2cf;border:6px solid var(--wood);border-radius:14px;padding:10px;display:grid;gap:10px 8px;box-shadow:inset 0 0 0 2px #fff6,0 6px 0 #8a603855}
+.shelf.c3{grid-template-columns:repeat(3,1fr)}.shelf.c4{grid-template-columns:repeat(4,1fr)}
+.item{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:6rem;padding:8px 2px 10px;border-radius:12px;background:var(--paper);border:2px solid #2a24201f;box-shadow:0 4px 0 #8a603844;text-align:center;transition:transform .12s}
+.item .e{font-size:2.3rem;line-height:1.1}
+.item .n{font-size:min(.85rem,4.1vw);font-weight:700;line-height:1.25;word-break:break-all}
+.shelf.c4 .item{min-height:5rem}.shelf.c4 .item .e{font-size:1.9rem}.shelf.c4 .item .n{font-size:min(.75rem,3.4vw)}
+.item.g0{background:var(--g0)}.item.g1{background:var(--g1)}.item.g2{background:var(--g2)}.item.g3{background:var(--g3)}.item.g4{background:var(--g4)}.item.g5{background:var(--g5)}
+.item.got{outline:4px solid var(--ok);outline-offset:-2px;animation:pop .35s}
+.item.got::after{content:"✓";position:absolute;top:2px;right:6px;font-size:1.2rem;font-weight:900;color:var(--ok)}
+.item.ng{opacity:.45;animation:shake .4s}
+.item.ng::after{content:"✕";position:absolute;top:2px;right:6px;font-size:1.2rem;font-weight:900;color:var(--red)}
+.item.sel{outline:4px solid var(--blue);outline-offset:-2px;transform:translateY(-3px)}
+.item.sel::after{content:"●";position:absolute;top:2px;right:6px;font-size:.9rem;color:var(--blue)}
+.item.glow{animation:glow 1.2s ease-in-out 3}
+.item.miss{outline:4px dashed var(--red);outline-offset:-2px}
+@keyframes glow{50%{box-shadow:0 0 0 6px var(--tag),0 4px 0 #8a603844}}
+@keyframes pop{40%{transform:scale(1.08)}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.basket{display:flex;align-items:center;gap:8px;min-height:3rem;background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:6px 12px;font-size:1.5rem;flex-wrap:wrap}
+.basket .lbl{font-size:.85rem;color:var(--ink2);font-weight:700}
+.basket .ph{font-size:.85rem;color:var(--ink2)}
+.msg{min-height:1.6rem;text-align:center;font-weight:700;font-size:1rem}
+.msg.ok{color:var(--ok)}.msg.ng{color:var(--red2)}
+.hint{background:#fff7d6;border:2px solid var(--tag2);border-radius:14px;padding:.6rem 1rem;font-size:.95rem;text-align:center}
+/* お会計 */
+.receipt{background:var(--paper);border-radius:6px;padding:1rem 1.2rem;box-shadow:0 6px 16px #2a242018;font-size:1.05rem;border-top:6px dotted var(--bg)}
+.receipt div{display:flex;justify-content:space-between;gap:8px;padding:.2rem 0;border-bottom:1px dashed var(--line)}
+.receipt .tot{font-weight:900;border-bottom:none;padding-top:.5rem}
+.price{display:inline-block;background:var(--tag);border:1.5px solid var(--tag2);border-radius:6px;padding:0 .4rem;font-weight:900;font-variant-numeric:tabular-nums}
+.disp{font-size:2rem;font-weight:900;text-align:center;background:#1f2a24;color:#bff5c9;border-radius:12px;padding:.3rem 1rem;font-variant-numeric:tabular-nums;letter-spacing:.06em;min-height:3rem;box-sizing:border-box}
+.disp .u{font-size:1.1rem;margin-left:.3rem;color:#8fd19c}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad button{all:unset;box-sizing:border-box;cursor:pointer;min-height:60px;display:grid;place-items:center;border-radius:12px;background:var(--paper);border:2px solid var(--line);font-size:1.5rem;font-weight:900;box-shadow:0 3px 0 #2a242022}
+.pad button:active{transform:translateY(2px);box-shadow:none}
+.pad button.del{font-size:1rem}.pad button.go{background:var(--ok);color:#fff;border-color:var(--ok2);font-size:1.05rem}
+/* 結果・ホーム */
+.verdict{background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 0 #2a242026;animation:up .35s ease-out}
+@keyframes up{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.stars{color:var(--gold);letter-spacing:.1em;font-size:1.3rem}
+.stars .off{color:#2a242026}
+.title{font-family:var(--f-memo);font-weight:600;font-size:2.4rem;letter-spacing:.08em;text-align:center;margin:4px 0 0;line-height:1.2}
+.lead{text-align:center;color:var(--ink2);margin:0;font-size:.95rem;line-height:1.8}
+.hero{display:flex;justify-content:center;gap:.4rem;font-size:2.2rem}
+.hero span{animation:bob 2.4s ease-in-out infinite}.hero span:nth-child(2){animation-delay:.3s}.hero span:nth-child(3){animation-delay:.6s}.hero span:nth-child(4){animation-delay:.9s}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats div{background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:8px 4px;text-align:center}
+.stats b{display:block;font-size:1.3rem}
+.stats small{color:var(--ink2);font-size:.75rem}
+.share{background:var(--paper);border-radius:14px;padding:12px;white-space:pre-line;font-size:1rem;line-height:1.7;text-align:center;border:2px solid var(--line)}
+.shares{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.shares a,.shares button{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--paper);color:var(--ink);font-size:.9rem;font-weight:700;text-decoration:none;padding:0 6px;box-sizing:border-box;font-family:inherit;cursor:pointer}
+.rlist{display:flex;flex-direction:column;gap:8px}
+.rlist div{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:8px 12px}
+.rlist .x{font-size:1.4rem;min-width:2.2rem;text-align:center}
+.rlist .w{flex:1 1 11rem;font-size:.85rem;color:var(--ink2);line-height:1.5;min-width:0}
+.rlist .w b{color:var(--ink);font-size:.95rem}
+.fsrow{display:flex;gap:6px;align-items:center;justify-content:center;font-size:.85rem;color:var(--ink2)}
+.fsrow button{all:unset;box-sizing:border-box;cursor:pointer;min-width:52px;min-height:48px;display:grid;place-items:center;border-radius:10px;border:2px solid var(--line);background:var(--paper);font-weight:900;color:var(--ink)}
+.fsrow button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.lens{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dex{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.dex div{min-height:4.6rem;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;background:var(--paper);border:2px solid var(--line);text-align:center;padding:4px 2px}
+.dex div .e{font-size:1.6rem;line-height:1.2}.dex div small{font-size:min(.7rem,3.2vw);line-height:1.25;word-break:break-all}
+.dex div.no{opacity:.35}.dex div.no .e{filter:grayscale(1)}
+.dex div b{font-size:.7rem;color:var(--ink2)}
+.agrp{font-size:.85rem;color:var(--ink2);margin:4px 0 -6px;font-weight:700;letter-spacing:.1em}
+.alist{display:flex;flex-direction:column;gap:8px}
+.ach{display:grid;grid-template-columns:2rem 1fr auto;grid-template-areas:"ic nm pg" "ic cd cd" "ic br br";align-items:center;gap:3px 10px;background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:8px 12px}
+.ach .ic{grid-area:ic;font-size:1.3rem;text-align:center}
+.ach b{grid-area:nm;font-size:1rem}.ach small{grid-area:cd;color:var(--ink2);font-size:.8rem;line-height:1.45}
+.ach .pg{grid-area:pg;font-size:.85rem;color:var(--ink2);white-space:nowrap;font-weight:700}
+.ach .bar{grid-area:br;height:6px;border-radius:3px;background:var(--line);overflow:hidden}.ach .bar i{display:block;height:100%;background:var(--ok)}
+.ach.got{background:var(--g0);border-color:var(--ok)}
+.ach:not(.got) .ic{filter:grayscale(1);opacity:.45}
+.achnext{text-align:center;font-size:.9rem;color:var(--ink2);margin:0}
+.achnew{text-align:center;font-size:.95rem;font-weight:700;color:var(--red2);margin:0;animation:up .35s ease-out}
+.badge{background:var(--red);color:#fff;border-radius:9px;padding:1px 7px;font-size:.75rem}
+.calnav{display:flex;align-items:center;gap:8px}.calnav b{flex:1;text-align:center;font-size:1.1rem}.calnav .sub{flex:0 0 72px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .wd{font-size:.7rem;color:var(--ink2);text-align:center}
+.cal .c{all:unset;box-sizing:border-box;min-height:48px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;background:var(--paper);border:1.5px solid var(--line);position:relative;line-height:1.1}
+.cal .c i{font-style:normal;font-size:.55rem;color:var(--gold)}
+.cal .c.p1{background:#f3ead2}.cal .c.p2{background:#ecd9a8}.cal .c.p3{background:var(--ok);color:#fff;border-color:var(--ok2)}.cal .c.p3 i{color:#ffe9a8}
+.cal .c.late{background:transparent;border:2px dashed var(--ok);color:var(--ok2)}
+.cal .c.miss{cursor:pointer;border:2px dashed var(--red);color:var(--red2);background:#fff}
+.cal .c.miss i{color:var(--red)}
+.cal .c.today{border:2.5px solid var(--ink)}
+.cal .c .hd{position:absolute;right:2px;top:1px;font-size:.55rem;color:var(--red);font-weight:900}
+.cal .c.p3 .hd{color:#ffe9a8}
+.cal .c.off{visibility:hidden}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center;font-size:.75rem;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:4px}.legend em{display:inline-block;width:14px;height:14px;border-radius:4px;font-style:normal}
+.about{background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:12px 14px;font-size:.88rem;line-height:1.8}
+.about h3{margin:.2rem 0 .3rem;font-size:1rem}
+.about p{margin:0 0 .6rem}
+.about ul{margin:0 0 .6rem;padding-left:1.2em}
+dialog{border:none;border-radius:18px;background:var(--paper);color:var(--ink);max-width:440px;width:calc(100% - 32px);padding:20px;box-sizing:border-box;max-height:calc(100% - 32px);overflow:auto}
+dialog::backdrop{background:#000000aa}
+dialog h2{margin:0 0 10px;letter-spacing:.1em}
+dialog ol{padding-left:1.3em;margin:0 0 12px;line-height:1.9;font-size:1rem}
+dialog p{margin:0 0 10px;font-size:.9rem;line-height:1.7;color:var(--ink2)}
+dialog a{color:var(--red2);min-height:44px;display:inline-flex;align-items:center}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;z-index:9;box-shadow:0 6px 20px #0005;max-width:90%;text-align:center;font-size:1rem}
+footer{margin-top:auto;text-align:center;font-size:.8rem;color:var(--ink2);display:flex;gap:4px 16px;justify-content:center;flex-wrap:wrap}
+footer a{color:var(--ink2);min-height:44px;display:inline-flex;align-items:center}
+.life{font-size:1.2rem;letter-spacing:2px}.life .off{opacity:.25}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* all:unset のボタンでも、キーボードで選んだときの枠が消えないよう、いちばん最後に強く書く */
+:is(.icon,button,a):focus-visible{outline:3px solid var(--blue)!important;outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<dialog id="howto" aria-labelledby="howto-t">
+  <h2 id="howto-t">遊び方</h2>
+  <ol>
+    <li>買い物メモを見て、品物を覚えます。覚えたら「覚えた」を押します。</li>
+    <li>お店の棚から、メモにあった品物を押してかごに入れます。</li>
+    <li>お会計の合計を、数字のボタンで入れます。</li>
+    <li>1日の最後に、1回目に買った品物を思い出します。</li>
+  </ol>
+  <p>時間制限はありません。ゆっくり考えてください。今日のおつかいはだれでも同じで1日1回。練習ととことんは何回でも遊べます。</p>
+  <p>文字の大きさは、はじめの画面の「文字」で変えられます。</p>
+  <p><a id="fb2" target="_blank" rel="noopener">感想を送る</a></p>
+  <button class="main" id="howto-ok" style="width:100%">わかった</button>
+</dialog>
+<script src="game.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id), app = $("app");
+const SITE = "https://satou-aaaaa.github.io/otsukai-memo/";
+const FEEDBACK = "https://github.com/satou-aaaaa/otsukai-memo/issues/new?template=feedback.yml";
+const KEY = "otsukai-v1", FSKEY = "otsukai-fs", EPOCH = "2026-11-05";
+const { BY, IDS, GROUPS } = OM;
+
+// ---- 文字の大きさ（この端末だけ。記録とは別に置く）----
+function fsGet() { try { const v = +localStorage.getItem(FSKEY); return v >= 1 && v <= 3 ? v : 1; } catch (e) { return 1; } }
+function fsSet(v) { try { localStorage.setItem(FSKEY, String(v)); } catch (e) {} document.documentElement.className = "fs" + v; }
+document.documentElement.className = "fs" + fsGet();
+
+// ---- 日付（日本時間。だれでも同じおつかい）----
+const jstNow = () => new Date(Date.now() + 9 * 3600e3);
+const todayKey = () => jstNow().toISOString().slice(0, 10);
+const dayNo = (k) => Math.round((Date.parse(k) - Date.parse(EPOCH)) / 864e5) + 1;
+const prevDay = (k) => new Date(Date.parse(k) - 864e5).toISOString().slice(0, 10);
+const md = (k) => `${+k.slice(5, 7)}/${+k.slice(8, 10)}`;
+const listOf = (mode, date) => (mode === "h" ? OM.hardList(date) : OM.dailyList(date));
+// ★はまちがい・ヒント・お会計のまちがいの合計（0で★3・2まで★2・それより多いと★1）
+const starsOf = (n) => (n === 0 ? 3 : n <= 2 ? 2 : 1);
+const starStr = (s) => `<span class="stars" aria-label="星${s}つ">${"★".repeat(s)}<span class="off">${"★".repeat(3 - s)}</span></span>`;
+const yen = (n) => n.toLocaleString("ja-JP") + "円";
+
+// ---- 記録（この端末の localStorage だけ）----
+// days・hdays・adays：日付 → { m:[回ごとのまちがい], h:[ヒント], c:[お会計のまちがい], r:[思い出せた数, 品の数] }
+// dex：品物 → かごに入れた回数。runs：遊んでいる途中（モードごと。練習で今日・上級の途中を消さない）
+const fresh = () => ({ v: 1, days: {}, hdays: {}, adays: {}, dex: {}, runs: {}, tut: false, kofi: {}, ebest: 0, calc: 0, trips: 0 });
+let MODE = "d";
+let mem = null; // 保存できない環境では、開いているあいだだけここに置く
+const doneOf = (r) => !!r && (r.mode === "e" ? !!r.over : r.res.length >= r.list.length);
+const recOf = (r) => { const b = r.res.filter((x) => x.k === "buy"), rc = r.res.find((x) => x.k === "recall"); return { m: b.map((x) => x.m), h: b.map((x) => x.h), c: b.map((x) => x.c), r: rc ? [rc.ok, rc.of, rc.ng] : [0, 0, 0] }; };
+const runKey = (mode, date) => (mode === "a" ? "a:" + date : mode);
+const bookOf = (s, m) => (m === "d" ? s.days : m === "h" ? s.hdays : m === "a" ? (s.adays = s.adays || {}) : null);
+// 終わった今日・上級・あとからの回を日ごとの記録に入れる（同じ日の今日とあとからは、どちらか一方だけ）
+function bank(s, r) { const b = doneOf(r) ? bookOf(s, r.mode) : null; if (!b || b[r.date] || (r.mode === "a" && s.days[r.date]) || (r.mode === "d" && s.adays[r.date])) return false; b[r.date] = recOf(r); return true; }
+// 保存に失敗したあとは、メモリと保存の両方を読んで合わせる（両方を fresh() で補ってから。日ごとの記録・帳は合わせ、数は多いほう。途中経過は同じ回なら進んだほう）
+const prog = (r) => (r.res ? r.res.length : 0) * 1000 + (r.cur ? ({ memo: 0, shelf: 1, pay: 2, recall: 1 }[r.cur.stage] || 0) * 100 + (r.cur.got ? r.cur.got.length : 0) * 10 + (r.cur.miss || 0) + (r.cur.hints || 0) + (r.cur.calc || 0) : 0);
+function load() {
+  let a = null, b = null;
+  try { b = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  try { a = mem !== null ? JSON.parse(mem) : null; } catch (e) {}
+  if (a && a.v !== 1) a = null; if (b && b.v !== 1) b = null;
+  if (!a || !b) return Object.assign(fresh(), a || b || {});
+  a = Object.assign(fresh(), a); b = Object.assign(fresh(), b);
+  const [n, o] = (a.t || 0) >= (b.t || 0) ? [a, b] : [b, a], s = Object.assign(fresh(), n);
+  for (const k in o) {
+    if (k === "runs" || k === "t") continue;
+    const x = o[k], y = n[k];
+    if (x && y && typeof x === "object" && typeof y === "object") { s[k] = Object.assign({}, x, y); for (const q in x) if (typeof x[q] === "number" && typeof y[q] === "number") s[k][q] = Math.max(x[q], y[q]); }
+    else if (typeof x === "number" && typeof y === "number") s[k] = Math.max(x, y);
+    else if (x === true) s[k] = true;
+  }
+  const ra = a.runs || {}, rb = b.runs || {}; s.runs = Object.assign({}, n.runs);
+  for (const m of new Set([...Object.keys(ra), ...Object.keys(rb)])) {
+    const x = ra[m], y = rb[m];
+    if (!x || !y) { const r = x || y; if (!r) continue; if (bank(s, r) || doneOf(r)) { delete s.runs[m]; continue; } const bd = bookOf(s, r.mode); if (!bd || !bd[r.date]) s.runs[m] = r; continue; }
+    if (x.id !== y.id) { const [w, l] = (x.date || "") >= (y.date || "") ? [x, y] : [y, x]; bank(s, l); s.runs[m] = w; }
+    else { const px = prog(x), py = prog(y); s.runs[m] = px > py ? x : py > px ? y : n.runs[m]; }
+  }
+  return s;
+}
+// 保存の前に読み直す（別のタブで進めた記録を消さない）
+function save(fn) { const s = load(); fn(s); s.t = Math.max(Date.now(), (s.t || 0) + 1); const j = JSON.stringify(s); try { localStorage.setItem(KEY, j); mem = null; } catch (e) { mem = j; } return s; }
+function streak(days) { let k = todayKey(), n = 0; if (!days[k]) k = prevDay(k); while (days[k]) { n++; k = prevDay(k); } return n; }
+const playedDays = (s) => new Set([...Object.keys(s.days), ...Object.keys(s.adays || {})]).size;
+// 取りこぼした日：今日より前の7日のうち、今日のおつかいもあとからも遊んでいない日（始めた日より前は無い）
+const LATE = 7;
+function lateDays(s, k = todayKey()) { const out = []; let d = k; for (let i = 0; i < LATE; i++) { d = prevDay(d); if (d < EPOCH) break; if (!s.days[d] && !(s.adays || {})[d]) out.push(d); } return out; }
+const sumOf = (rec) => rec.m.reduce((a, b) => a + b, 0) + rec.h.reduce((a, b) => a + b, 0) + rec.c.reduce((a, b) => a + b, 0);
+const fullRecall = (rec) => rec.r[1] > 0 && rec.r[0] === rec.r[1] && !rec.r[2];
+
+// ---- 実績：いまの記録から毎回数える（新しく残すものは無い）。[id, 名前, 条件, 種類, 数え方, 目標] ----
+function tally(s) {
+  const dd = Object.values(s.days || {}), all = [...dd, ...Object.values(s.adays || {}), ...Object.values(s.hdays || {})].filter((r) => r && Array.isArray(r.m));
+  return { days: playedDays(s), clean: dd.filter((r) => r && Array.isArray(r.m) && sumOf(r) === 0).length, hard: Object.keys(s.hdays || {}).length, late: Object.keys(s.adays || {}).length,
+    recall: all.filter(fullRecall).length, dex: Object.keys(s.dex || {}).filter((k) => BY[k]).length, calc: s.calc || 0, ebest: s.ebest || 0, trips: s.trips || 0 };
+}
+const ACH = [
+  ["clean1", "まちがいなしの日", "今日のおつかいを、まちがい・ヒントなしで終える", 0, "clean", 1],
+  ["clean5", "しっかり者", "まちがいなしの日が5日", 0, "clean", 5],
+  ["recall3", "思い出し上手", "最後の思い出しで全部当てる（3回）", 0, "recall", 3],
+  ["hard1", "大きなおつかい", "上級のおつかいを終える", 0, "hard", 1],
+  ["e7", "7品のメモ", "とことんで7品のメモを一度で覚える", 0, "ebest", 7],
+  ["dex24", "半分の品", `買い物帳に${Math.ceil(IDS.length / 2)}品`, 1, "dex", Math.ceil(IDS.length / 2)],
+  ["dexAll", "全部の売り場", `買い物帳に${IDS.length}品全部`, 1, "dex", IDS.length],
+  ["calc30", "お会計上手", "お会計を一度で合わせる（30回）", 1, "calc", 30],
+  ["first", "最初の買い物", "今日のおつかいを1日遊ぶ", 2, "days", 1],
+  ["d7", "7日通う", "遊んだ日が合わせて7日", 2, "days", 7],
+  ["d30", "お店の常連", "遊んだ日が合わせて30日", 2, "days", 30],
+  ["late1", "あとからおつかい", "取りこぼした日をあとから遊ぶ", 2, "late", 1],
+];
+const AGRP = ["腕前", "集める", "続ける"];
+const AUNIT = { clean: "日", recall: "回", hard: "日", ebest: "品", dex: "品", calc: "回", days: "日", late: "日" };
+const achGot = (s) => { const t = tally(s); return ACH.filter((a) => t[a[4]] >= a[5]).map((a) => a[0]); };
+// あと少しの実績：まだの実績のうち、いちばん目標に近いもの1つ（ゴールに近いほど人はがんばる。Kivetz ほか 2006）
+function nextAch(s) { const t = tally(s); let best = null; for (const a of ACH) { const n = t[a[4]]; if (n <= 0 || n >= a[5]) continue; const r = n / a[5], left = a[5] - n; if (!best || r > best.r || (r === best.r && left < best.left)) best = { id: a[0], name: a[1], left, unit: AUNIT[a[4]] || "", r }; } return best; }
+
+// ---- 画面の部品 ----
+let toastT = 0;
+function toast(t) { document.querySelectorAll(".toast").forEach((x) => x.remove()); const d = document.createElement("div"); d.className = "toast"; d.setAttribute("role", "status"); d.textContent = t; document.body.appendChild(d); clearTimeout(toastT); toastT = setTimeout(() => d.remove(), 2200); }
+const buzz = (n = 12) => { try { navigator.vibrate && navigator.vibrate(n); } catch (e) {} };
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const footer = () => `<footer><a href="#" id="f-how">遊び方</a><a href="#" id="f-about">このゲームについて</a><a href="${FEEDBACK}" target="_blank" rel="noopener">感想を送る</a><a href="https://ko-fi.com/satouaaaaa" target="_blank" rel="noopener">Ko-fi で応援</a></footer>`;
+function bindFooter() { const h = $("f-how"); if (h) h.onclick = (e) => { e.preventDefault(); openHow(); }; const a = $("f-about"); if (a) a.onclick = (e) => { e.preventDefault(); about(); }; }
+function openHow() { $("fb2").href = FEEDBACK; const d = $("howto"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+$("howto-ok").onclick = () => { const d = $("howto"); d.close ? d.close() : d.removeAttribute("open"); save((s) => { s.tut = true; }); };
+const itemBtn = (id, cls = "") => { const it = BY[id]; return `<button class="item g${it.g} ${cls}" data-id="${id}" aria-label="${it.n}">${`<span class="e" aria-hidden="true">${it.e}</span><span class="n">${it.n}</span>`}</button>`; };
+const toTop = () => window.scrollTo(0, 0);
+
+function home() {
+  const s = load(), k = todayKey(), done = s.days[k], hdone = s.hdays[k];
+  // 最後まで遊んで結果を見る前に閉じた回は、開き直したら結果へ進める（記録をつける）
+  for (const m of Object.keys(s.runs)) { const r = s.runs[m]; if (m !== "p" && r && doneOf(r)) { MODE = m; return finish(); } }
+  const late = lateDays(s, k), ag = achGot(s).length, n = Object.keys(s.dex).filter((x) => BY[x]).length, fs = fsGet();
+  const rd = s.runs.d && s.runs.d.date === k ? s.runs.d : null, rh = s.runs.h && s.runs.h.date === k ? s.runs.h : null, re = s.runs.e && !doneOf(s.runs.e) ? s.runs.e : null;
+  const back = !done && !rd && playedDays(s) > 0 && !s.days[prevDay(k)] && !(s.adays || {})[prevDay(k)]; // しばらくぶりの人を迎える（休んだ日を責めない）
+  app.innerHTML = `
+    <div class="fsrow" role="group" aria-label="文字の大きさ">文字<button data-fs="1" aria-pressed="${fs === 1}" aria-label="文字 ふつう">あ</button><button data-fs="2" aria-pressed="${fs === 2}" aria-label="文字 大きい" style="font-size:1.15em">あ</button><button data-fs="3" aria-pressed="${fs === 3}" aria-label="文字 とても大きい" style="font-size:1.3em">あ</button></div>
+    <h1 class="title">おつかいメモ</h1>
+    <div class="hero" aria-hidden="true"><span>🥕</span><span>🍎</span><span>🐟</span><span>🍞</span></div>
+    <p class="lead">メモを覚えて、お店で選んで、お会計。<br>だれでも同じ、1日3回のおつかい。</p>
+    ${back ? `<p class="note" id="welcome">おかえりなさい。きょうも、ゆっくりどうぞ。</p>` : ""}
+    ${done ? `<div class="share">今日の結果　${shareMarks(done)}</div>` : ""}
+    <button class="main" id="go-d">${done ? "今日の結果を見る" : rd ? `続きから（${Math.min(rd.res.length + 1, 4)}つ目）` : `今日のおつかいに行く <small>第${dayNo(k)}日</small>`}</button>
+    ${done ? `<button class="main alt" id="go-h">${hdone ? "上級の結果を見る" : rh ? "上級の続きから" : "上級：6品と7品のおつかい"}</button>` : ""}
+    <button class="main alt" id="go-e">${re ? `とことんの続きから（${re.len}品のメモ）` : "とことん：何品まで覚えられる？"}${s.ebest ? ` <small>自己ベスト ${s.ebest}品</small>` : ""}</button>
+    <div class="row"><button class="sub" id="go-p">練習（何回でも）</button><button class="sub" id="go-dex">買い物帳 ${n}/${IDS.length}</button></div>
+    <div class="row"><button class="sub" id="go-cal" aria-label="カレンダー${late.length ? `（あとから遊べる日 ${late.length}）` : ""}">カレンダー${late.length ? ` <small class="badge">▶${late.length}</small>` : ""}</button><button class="sub" id="go-ach">実績 ${ag}/${ACH.length}</button></div>
+    <div class="stats"><div><b>${playedDays(s)}</b><small>遊んだ日</small></div><div><b>${s.trips || 0}</b><small>おつかい</small></div><div><b>${s.ebest || 0}</b><small>覚えた最高</small></div></div>
+    ${footer()}`;
+  document.querySelectorAll("[data-fs]").forEach((b) => (b.onclick = () => { fsSet(+b.dataset.fs); home(); }));
+  $("go-d").onclick = () => (k !== todayKey() ? home() : done ? result("d", k) : startRun("d"));
+  if ($("go-h")) $("go-h").onclick = () => (hdone ? result("h", k) : k === todayKey() ? startRun("h") : home());
+  $("go-e").onclick = () => startRun("e");
+  $("go-p").onclick = practiceMenu;
+  $("go-dex").onclick = dexView;
+  $("go-cal").onclick = () => cal();
+  $("go-ach").onclick = achView;
+  bindFooter(); toTop();
+  if (!s.tut) openHow();
+}
+function practiceMenu() {
+  app.innerHTML = `<header><button class="icon" id="back" aria-label="もどる">←</button><h1>練習<small>今日の記録には入りません（買い物帳には載ります）</small></h1></header>
+    <p class="note">メモの品の数を選んでください。</p>
+    <div class="lens">${[3, 4, 5, 6, 7, 8].map((n) => `<button class="sub" data-n="${n}" style="min-height:72px;font-size:1.1rem">${n}品</button>`).join("")}</div>
+    <p class="note">練習は何回でも遊べます。お会計もあります。</p>${footer()}`;
+  $("back").onclick = home;
+  document.querySelectorAll("[data-n]").forEach((b) => (b.onclick = () => startRun("p", +b.dataset.n)));
+  bindFooter(); toTop();
+}
+const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+function startRun(mode, opt) {
+  const k = todayKey(); let ng = false;
+  save((s) => {
+    if (mode === "a") {
+      const ra = s.runs[runKey("a", opt)];
+      if (ra && ra.date === opt && !doneOf(ra)) return; // 続きから
+      if (!lateDays(s, k).includes(opt)) { ng = true; return; }
+      for (const m of Object.keys(s.runs)) if (m.startsWith("a:") && !s.runs[m]) delete s.runs[m];
+      s.runs[runKey("a", opt)] = { mode, date: opt, list: OM.dailyList(opt), res: [], cur: null, id: "a" + opt, a0: achGot(s) };
+      return;
+    }
+    // とことん：3品から始め、一度で覚えたら1品ふやす。まちがえた回が3回で終わり（途中なら続きから。日をまたいでも続けられる）
+    if (mode === "e") { const re = s.runs.e; if (re && !doneOf(re)) return; s.runs.e = { mode, date: k, len: 3, life: 3, list: [OM.freeTrip(3, "none")], res: [], cur: null, id: newId(), a0: achGot(s) }; return; }
+    if (mode !== "p" && s.runs[mode] && s.runs[mode].date === k) return; // 続きから
+    if ((mode === "d" && s.days[k]) || (mode === "h" && s.hdays[k])) return; // 別のタブで今日の分を終えていたら、もう一度は始めない
+    const list = mode === "p" ? [OM.freeTrip(opt, opt >= 6 ? "change" : "sum")] : listOf(mode, k);
+    s.runs[mode] = { mode, date: k, list, res: [], cur: null, id: newId(), a0: achGot(s) };
+  });
+  if (ng) return cal();
+  MODE = runKey(mode, opt);
+  play();
+}
+
+// ---- 遊ぶ画面 ----
+// cur：{ i, stage: "memo"|"shelf"|"pay"|"recall", got:[かごに入れた品], ng:[まちがえて押した品], miss, hints, calc, sel:[思い出しで選んだ品] }
+let cur = null, typed = "";
+const same = (r) => r && cur && r.id === cur.id && r.res.length === cur.i; // 保存した進み具合が、この画面と同じ回か
+// 途中の様子を保存する（ヒント・まちがいの数は、別のタブで数えた分より減らさない）
+function keep() { save((s) => { const r = s.runs[MODE]; if (!same(r)) return; const w = r.cur && r.cur.i === cur.i ? r.cur : null; if (w) for (const q of ["miss", "hints", "calc"]) cur[q] = Math.max(cur[q] || 0, w[q] || 0); r.cur = { i: cur.i, stage: cur.stage, got: cur.got.slice(), ng: cur.ng.slice(), miss: cur.miss, hints: cur.hints, calc: cur.calc, sel: cur.sel.slice(), hl: cur.hl || null }; }); }
+function play() {
+  const s = load(), run = s.runs[MODE];
+  if (!run) return home();
+  if (doneOf(run)) return finish();
+  if (run.mode === "a" && s.days[run.date]) { save((s2) => { delete s2.runs[MODE]; }); toast("この日は別の画面で遊び終えています"); return home(); }
+  const i = run.res.length, trip = run.list[i];
+  const sv = run.cur && run.cur.i === i ? run.cur : null;
+  cur = { id: run.id, i, stage: sv ? sv.stage : trip.k === "recall" ? "recall" : "memo", got: sv ? sv.got.filter((x) => trip.items.includes(x)) : [], ng: sv ? (sv.ng || []).filter((x) => trip.shelf.includes(x)) : [], miss: sv ? sv.miss || 0 : 0, hints: sv ? sv.hints || 0 : 0, calc: sv ? sv.calc || 0 : 0, sel: sv ? (sv.sel || []).filter((x) => trip.shelf.includes(x)) : [], hl: sv ? sv.hl || null : null };
+  typed = "";
+  if (cur.stage === "done") return endTrip(trip); // お会計を終えて次へ進む前に閉じた回
+  if (cur.stage === "memo") memoView(run, trip);
+  else if (cur.stage === "shelf") shelfView(run, trip);
+  else if (cur.stage === "pay") payView(run, trip);
+  else recallView(run, trip);
+}
+function headOf(run, sub) {
+  const t = run.mode === "d" ? `今日のおつかい 第${dayNo(run.date)}日` : run.mode === "a" ? `${md(run.date)} のおつかい（あとから）` : run.mode === "h" ? "上級のおつかい" : run.mode === "e" ? `とことん（${run.res.length + 1}回目）` : "練習";
+  const prog = run.mode === "e" ? `<span class="life" id="life" aria-label="のこり ${run.life}">${"🧺".repeat(Math.max(0, run.life))}<span class="off">${"🧺".repeat(Math.max(0, 3 - run.life))}</span></span>` : "";
+  return `<header><button class="icon" id="back" aria-label="ホームへ（途中は残ります）">←</button><h1>${t}<small>${sub}</small></h1>${prog}</header>`;
+}
+function stepBar(trip) {
+  if (trip.k === "recall") return "";
+  const st = ["memo", "shelf", ...(trip.pay === "none" ? [] : ["pay"])], nm = { memo: "覚える", shelf: "選ぶ", pay: "お会計" }, at = st.indexOf(cur.stage);
+  return `<div class="step">${st.map((x, j) => `<span class="${j < at ? "done" : j === at ? "on" : ""}">${j + 1} ${nm[x]}</span>`).join("")}</div>`;
+}
+function tripLabel(run) { const n = run.list.filter((t) => t.k === "buy").length; return run.mode === "e" || run.mode === "p" ? "" : `${run.res.length + 1}回目／${n}回のおつかい`; }
+function memoView(run, trip) {
+  const tip = run.mode === "p" || run.mode === "e" ? OM.TIPS[(run.res.length + run.id.length) % OM.TIPS.length] : OM.TIP_OF(run.date, EPOCH), ex = tip.ex(trip.items);
+  app.innerHTML = `${headOf(run, tripLabel(run))}${stepBar(trip)}
+    <div class="memo" id="memo"><h2>おつかいメモ（${trip.items.length}品）</h2><ul>${trip.items.map((id, j) => `<li style="animation-delay:${j * 0.12}s"><span class="e" aria-hidden="true">${BY[id].e}</span>${BY[id].n}</li>`).join("")}</ul></div>
+    <div class="tip" id="tip">💡 覚え方のコツ：<b>${tip.t}</b><br>${tip.d}${ex ? `<span class="ex">${esc(ex)}</span>` : ""}</div>
+    <button class="main ok" id="ready">覚えた！お店へ行く</button>
+    <p class="note">時間制限はありません。お店に入るとメモは見られません。</p>`;
+  $("back").onclick = home;
+  $("ready").onclick = () => { if (!same(load().runs[MODE])) return play(); cur.stage = "shelf"; keep(); shelfView(load().runs[MODE], trip); };
+  toTop();
+}
+function shelfView(run, trip) {
+  const cols = trip.shelf.length > 12 ? 4 : 3, left = trip.items.length - cur.got.length;
+  app.innerHTML = `${headOf(run, tripLabel(run))}${stepBar(trip)}
+    <p class="big" style="font-size:1.15rem">メモにあった品を、棚から選んでください</p>
+    <div class="shelf c${cols}" id="shelf">${trip.shelf.map((id) => itemBtn(id, cur.got.includes(id) ? "got" : cur.ng.includes(id) ? "ng" : cur.hl === id ? "glow" : "")).join("")}</div>
+    <div class="basket" id="basket" aria-live="polite"><span class="lbl">かご</span>${cur.got.length ? cur.got.map((id) => `<span aria-label="${BY[id].n}">${BY[id].e}</span>`).join("") : `<span class="ph">まだ空です</span>`}<span class="lbl" style="margin-left:auto">のこり ${left}品</span></div>
+    <div class="msg" id="msg" aria-live="polite"></div>
+    <div id="hintbox">${hintHtml(trip)}</div>
+    <div class="row"><button class="sub" id="hint"${cur.hints >= 2 ? " disabled" : ""}>ヒント${run.mode === "e" ? "（🧺を使わない）" : ""}</button></div>`;
+  $("back").onclick = home;
+  document.querySelectorAll("#shelf .item").forEach((b) => (b.onclick = () => pickItem(b, trip)));
+  $("hint").onclick = () => shelfHint(trip);
+  toTop();
+}
+// ヒントは2段：1回目は、のこりの品の売り場だけ。2回目は、のこりの品を1つ光らせる
+function hintHtml(trip) {
+  if (!cur.hints) return "";
+  const rest = trip.items.filter((x) => !cur.got.includes(x)), gs = [...new Set(rest.map((x) => GROUPS[BY[x].g]))];
+  return `<div class="hint">のこりは <b>${gs.join("・")}</b> の売り場にあります${cur.hints >= 2 ? "。光っている品も、メモにありました" : ""}</div>`;
+}
+function shelfHint(trip) {
+  if (cur.hints >= 2 || !same(load().runs[MODE])) return;
+  cur.hints++;
+  if (cur.hints === 2) { const rest = trip.items.filter((x) => !cur.got.includes(x)); cur.hl = rest[0] || null; }
+  keep(); shelfView(load().runs[MODE], trip); buzz();
+}
+function pickItem(b, trip) {
+  const id = b.dataset.id;
+  if (cur.got.includes(id) || cur.ng.includes(id)) return;
+  if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  const m = $("msg");
+  if (trip.items.includes(id)) {
+    cur.got.push(id); if (cur.hl === id) cur.hl = null; b.className = `item g${BY[id].g} got`; buzz();
+    m.className = "msg ok"; m.textContent = `${BY[id].n}、ありました！`;
+    $("basket").innerHTML = `<span class="lbl">かご</span>${cur.got.map((x) => `<span aria-label="${BY[x].n}">${BY[x].e}</span>`).join("")}<span class="lbl" style="margin-left:auto">のこり ${trip.items.length - cur.got.length}品</span>`;
+    if (cur.got.length >= trip.items.length) {
+      cur.stage = trip.pay === "none" ? "done" : "pay"; keep();
+      document.querySelectorAll("#shelf .item").forEach((x) => (x.disabled = true)); $("hint").disabled = true;
+      if (cur.stage === "pay") { setTimeout(() => { if (cur && cur.stage === "pay" && $("shelf")) payView(load().runs[MODE], trip); }, 700); }
+      else endTrip(trip);
+    } else keep();
+  } else {
+    cur.ng.push(id); cur.miss++; b.className = `item g${BY[id].g} ng`; buzz(40);
+    m.className = "msg ng"; m.textContent = `${BY[id].n}は、メモにありませんでした`; keep();
+  }
+}
+function payView(run, trip) {
+  const ch = trip.pay === "change";
+  app.innerHTML = `${headOf(run, tripLabel(run))}${stepBar(trip)}
+    <div class="receipt" id="receipt">${trip.items.map((id) => `<div><span>${BY[id].e} ${BY[id].n}</span><span class="price">${yen(BY[id].p)}</span></div>`).join("")}
+      ${ch ? `<div class="tot"><span>${yen(trip.paid)}札で払います</span><span></span></div>` : ""}</div>
+    <p class="big" style="font-size:1.2rem" id="q">${ch ? "おつりはいくら？" : "合計はいくら？"}</p>
+    <div class="disp" id="disp" aria-live="polite">${typed || "0"}<span class="u">円</span></div>
+    <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="pad" id="pad">${["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => `<button data-d="${d}">${d}</button>`).join("")}<button class="del" data-d="del" aria-label="1字消す">消す</button><button data-d="0">0</button><button class="go" data-d="go">決める</button></div>
+    <p class="note">紙に書いて計算してもかまいません。</p>`;
+  $("back").onclick = home;
+  document.querySelectorAll("#pad button").forEach((b) => (b.onclick = () => padKey(b.dataset.d, trip)));
+  toTop();
+}
+function padKey(d, trip) {
+  if (cur.stage !== "pay") return;
+  if (d === "del") typed = typed.slice(0, -1);
+  else if (d === "go") return payCheck(trip);
+  else if (typed.length < 5) typed = (typed + d).replace(/^0+(?=\d)/, "");
+  $("disp").innerHTML = `${typed || "0"}<span class="u">円</span>`; buzz(6);
+}
+function payCheck(trip) {
+  if (!typed) return;
+  if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  const want = trip.pay === "change" ? trip.paid - trip.total : trip.total, got = +typed, m = $("msg");
+  if (got === want) { buzz([10, 40, 10]); cur.stage = "done"; keep(); return endTrip(trip); }
+  cur.calc++; buzz(40); typed = ""; $("disp").innerHTML = `0<span class="u">円</span>`;
+  if (cur.calc >= 2) {
+    // 2回まちがえたら、計算のしかたを見せて先へ（いつまでも止めない）
+    const how = trip.items.map((id) => BY[id].p).join("＋") + `＝${yen(trip.total)}` + (trip.pay === "change" ? `、${yen(trip.paid)}−${yen(trip.total)}＝${yen(want)}` : "");
+    m.className = "msg ng"; m.innerHTML = `答えは <b>${yen(want)}</b> でした。<br><small>${esc(how)}</small>`;
+    cur.stage = "done"; keep();
+    $("pad").innerHTML = ""; $("pad").insertAdjacentHTML("afterend", `<button class="main" id="go-next">次へ</button>`);
+    $("go-next").onclick = () => endTrip(trip);
+  } else { m.className = "msg ng"; m.textContent = got > want ? "少し多いようです。もう一度計算してみましょう" : "少し足りないようです。もう一度計算してみましょう"; keep(); }
+}
+// 1回のおつかいを終える：結果を入れ、買い物帳に品を足す
+function endTrip(trip) {
+  let r = null;
+  const s = save((s) => {
+    r = s.runs[MODE]; if (!same(r)) { r = null; return; }
+    r.res.push({ k: "buy", m: cur.miss, h: cur.hints, c: cur.calc }); r.cur = null;
+    for (const id of trip.items) s.dex[id] = (s.dex[id] || 0) + 1;
+    s.trips = (s.trips || 0) + 1; if (trip.pay !== "none" && cur.calc === 0) s.calc = (s.calc || 0) + 1;
+    if (r.mode === "e") {
+      const perfect = cur.miss === 0 && cur.hints === 0;
+      if (perfect) { s.ebest = Math.max(s.ebest || 0, trip.items.length); r.len = Math.min(12, r.len + 1); } else r.life--;
+      if (r.life <= 0) r.over = true; else r.list.push(OM.freeTrip(r.len, "none"));
+    }
+  });
+  if (!r) { toast("別の画面で先に進んでいます"); return play(); }
+  const run = s.runs[MODE], st = starsOf(cur.miss + cur.hints + cur.calc), fin = doneOf(run);
+  const nextRecall = !fin && run.list[run.res.length] && run.list[run.res.length].k === "recall";
+  const say = cur.miss + cur.hints + cur.calc === 0 ? "ばっちり！" : cur.miss + cur.hints === 0 ? "メモは全部覚えていました" : "おつかい完了";
+  app.innerHTML = `${headOf(run, "")}
+    <div class="verdict" role="status"><p class="big">${say} ${starStr(st)}</p>
+      <div class="basket" style="justify-content:center;font-size:1.8rem">${trip.items.map((id) => `<span aria-label="${BY[id].n}">${BY[id].e}</span>`).join("")}</div>
+      <p class="note">まちがい ${cur.miss}・ヒント ${cur.hints}${trip.pay !== "none" ? `・お会計 ${cur.calc ? `${cur.calc}回やり直し` : "一度で正解"}` : ""}</p>
+      ${run.mode === "e" ? `<p class="note">${cur.miss + cur.hints === 0 ? `一度で覚えました。次は ${run.len}品のメモです。` : `🧺を1つ使いました。次も ${run.len}品です。`}</p>` : ""}
+      ${nextRecall ? `<p class="note">最後に、<b>1回目のおつかいで買った品</b>を思い出します。</p>` : ""}
+      <button class="main" id="next">${fin ? "結果を見る" : nextRecall ? "思い出しへ" : "次のおつかいへ"}</button>
+      ${run.mode === "e" && !fin ? `<button class="sub" id="quit">ここでおしまいにする</button>` : ""}</div>`;
+  $("back").onclick = home;
+  $("next").onclick = play;
+  if ($("quit")) $("quit").onclick = () => { save((s2) => { const r2 = s2.runs.e; if (r2 && r2.id === run.id) r2.over = true; }); finish(); };
+  toTop();
+}
+// 思い出し：1回目のおつかいで買った品を、棚から全部選んで「これで決める」
+function recallView(run, trip) {
+  const cols = trip.shelf.length > 12 ? 4 : 3;
+  app.innerHTML = `${headOf(run, "最後の思い出し")}
+    <p class="big" style="font-size:1.15rem">1回目のおつかいで買った品は？</p>
+    <p class="note">${trip.items.length}品あります。全部選んで「これで決める」を押してください。押し直すと外せます。</p>
+    <div class="shelf c${cols}" id="shelf">${trip.shelf.map((id) => itemBtn(id, cur.sel.includes(id) ? "sel" : "")).join("")}</div>
+    <button class="main ok" id="decide"${cur.sel.length ? "" : " disabled"}>これで決める（${cur.sel.length}/${trip.items.length}）</button>`;
+  $("back").onclick = home;
+  document.querySelectorAll("#shelf .item").forEach((b) => (b.onclick = () => {
+    const id = b.dataset.id, j = cur.sel.indexOf(id);
+    if (j >= 0) cur.sel.splice(j, 1); else if (cur.sel.length < trip.items.length) cur.sel.push(id); else return toast(`選べるのは${trip.items.length}品までです`);
+    b.classList.toggle("sel", cur.sel.includes(id)); b.setAttribute("aria-pressed", cur.sel.includes(id)); buzz(6);
+    $("decide").disabled = !cur.sel.length; $("decide").textContent = `これで決める（${cur.sel.length}/${trip.items.length}）`; keep();
+  }));
+  $("decide").onclick = () => recallDone(trip);
+  toTop();
+}
+function recallDone(trip) {
+  if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); }
+  const ok = cur.sel.filter((x) => trip.items.includes(x)).length, ng = cur.sel.length - ok;
+  save((s) => { const r = s.runs[MODE]; if (!same(r)) return; r.res.push({ k: "recall", ok, of: trip.items.length, ng }); r.cur = null; });
+  document.querySelectorAll("#shelf .item").forEach((b) => { const id = b.dataset.id, on = cur.sel.includes(id), want = trip.items.includes(id); b.disabled = true; b.classList.remove("sel"); if (on && want) b.classList.add("got"); else if (on) b.classList.add("ng"); else if (want) b.classList.add("miss"); });
+  $("decide").outerHTML = `<div class="verdict" role="status"><p class="big">${ok === trip.items.length && !ng ? "全部思い出せました！" : `${trip.items.length}品のうち ${ok}品 思い出せました`}</p>
+    <p class="note">${ok < trip.items.length ? "点線の品が、思い出せなかった品です。" : "あとから思い出すのは、覚えた直後より難しいものです。"}</p>
+    <button class="main" id="next">結果を見る</button></div>`;
+  $("next").onclick = finish; buzz([10, 40, 10]);
+}
+
+// ---- 結果 ----
+function finish() {
+  const s = load(), run = s.runs[MODE];
+  if (!run) return home();
+  if (run.mode === "e") return endFinish(run);
+  let first = false, newAch = [];
+  const rec = recOf(run);
+  save((s2) => { first = bank(s2, run); const c = s2.runs[MODE]; if (c && c.id === run.id) delete s2.runs[MODE]; if (Array.isArray(run.a0)) newAch = achGot(s2).filter((id) => !run.a0.includes(id)); });
+  if (run.mode === "p") return result("p", run.date, false, { list: run.list, ...rec }, newAch);
+  result(run.mode, run.date, first, null, newAch);
+}
+function endFinish(run) {
+  const n = Math.max(0, ...run.res.map((x, j) => (x.m === 0 && x.h === 0 ? run.list[j].items.length : 0))); let newAch = [];
+  save((s2) => { const c = s2.runs.e; if (c && c.id === run.id) delete s2.runs.e; if (Array.isArray(run.a0)) newAch = achGot(s2).filter((id) => !run.a0.includes(id)); });
+  const s = load();
+  app.innerHTML = `<header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>とことん<small>${run.res.length}回のおつかい</small></h1></header>
+    <p class="big" id="eres">${n ? `${n}品のメモを一度で覚えました` : "おつかいおつかれさまでした"}</p>
+    <p class="note" id="ebest">${n && n >= s.ebest ? "🎉 自己ベストです！" : `自己ベスト ${s.ebest}品`}</p>
+    ${newAch.length ? `<p class="achnew" id="achnew">${newAch.map((id) => `🏅 実績：${ACH.find((a) => a[0] === id)[1]}`).join("<br>")}</p>` : ""}
+    <div class="rlist">${run.res.map((x, j) => `<div><span class="x">${x.m + x.h === 0 ? "⭕" : "🧺"}</span><span class="w"><b>${run.list[j].items.length}品のメモ</b><br>まちがい ${x.m}・ヒント ${x.h}</span></div>`).join("")}</div>
+    <button class="main" id="go-e">もう一度とことん</button>
+    <div class="row"><button class="sub" id="go-p">練習する</button><button class="sub" id="go-dex">買い物帳</button></div>
+    <p class="note"><a href="${FEEDBACK}" target="_blank" rel="noopener">感想を送る</a></p>`;
+  $("back").onclick = home; $("go-e").onclick = () => startRun("e"); $("go-p").onclick = practiceMenu; $("go-dex").onclick = dexView;
+  toTop();
+}
+// 共有の文：品物の名前（答え）は出さない。★の数とおつかいの印だけ
+const sq = (n) => (n === 0 ? "🟩" : n <= 2 ? "🟨" : "🟧");
+const shareMarks = (rec) => rec.m.map((m, j) => sq(m + rec.h[j] + rec.c[j])).join("") + ` 🧠${rec.r[0]}/${rec.r[1]}`;
+function shareText(mode, k, rec) { return `おつかいメモ${mode === "h" ? " 上級" : ""} 第${dayNo(k)}日 ${md(k)}\n🛒${shareMarks(rec)}${sumOf(rec) === 0 && fullRecall(rec) ? " ばっちり" : ""}`; }
+function untilNext() { const n = jstNow(), ms = 864e5 - (n.getTime() % 864e5); return `${Math.floor(ms / 36e5)}時間${Math.floor((ms % 36e5) / 6e4)}分`; }
+function result(mode, k, first, prec, newAch = []) {
+  const s = load(), list = mode === "p" ? prec.list : listOf(mode === "a" ? "d" : mode, k), rec = mode === "p" ? prec : bookOf(s, mode)[k];
+  if (!rec) return home();
+  const buys = list.filter((t) => t.k === "buy"), total = sumOf(rec), late = mode === "a", text = shareText(mode, k, rec);
+  const showKofi = first && (mode === "d" || mode === "h") && total === 0 && fullRecall(rec) && !s.kofi[k + mode]; // 全部一度で・思い出しも満点の初回だけ。あとからには出さない
+  if (showKofi) save((s2) => { s2.kofi[k + mode] = 1; });
+  app.innerHTML = `
+    <header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>おつかいメモ<small>${mode === "d" ? `今日のおつかい 第${dayNo(k)}日` : late ? `${md(k)} あとから` : mode === "h" ? "上級のおつかい" : "練習"}</small></h1></header>
+    <p class="big">${total === 0 && (mode === "p" || fullRecall(rec)) ? "ばっちりのおつかい！" : "おつかい完了！"}</p>
+    ${newAch.length ? `<p class="achnew" id="achnew">${newAch.map((id) => `🏅 実績：${ACH.find((a) => a[0] === id)[1]}`).join("<br>")}</p>` : ""}
+    ${(() => { const nx = nextAch(s); return nx && mode !== "p" ? `<p class="achnext" id="achnext">🎯 あと${nx.left}${nx.unit}で「${nx.name}」</p>` : ""; })()}
+    <div class="rlist">${buys.map((t, j) => `<div><span class="x">${t.items.map((id) => BY[id].e).join("")}</span><span class="w"><b>${t.items.length}品</b> ${starStr(starsOf(rec.m[j] + rec.h[j] + rec.c[j]))}<br>まちがい ${rec.m[j]}・ヒント ${rec.h[j]}・お会計 ${rec.c[j] ? "やり直し" + rec.c[j] : "一度で"}</span></div>`).join("")}
+      ${rec.r[1] ? `<div><span class="x">🧠</span><span class="w"><b>思い出し ${rec.r[0]}/${rec.r[1]}品</b>${rec.r[2] ? `（ちがう品 ${rec.r[2]}）` : ""}</span></div>` : ""}</div>
+    ${late ? `<p class="note">あとから遊んだ日は、カレンダーに ↺ で残ります（連続の日には数えません）。</p><button class="main alt" id="go-cal">カレンダーへ</button>` : ""}
+    ${mode === "d" || mode === "h" ? `<div class="share">${esc(text)}</div>
+    <button class="main" id="share">結果をシェア</button>
+    <div class="shares"><a id="toX" target="_blank" rel="noopener">Xで投稿</a><a id="toLine" target="_blank" rel="noopener">LINEで送る</a><button id="copy">コピー</button></div>
+    <p class="note">🟩まちがいなし　🟨1〜2回　🟧3回以上　🧠思い出し<br>次のおつかいまで あと <b>${untilNext()}</b></p>` : ""}
+    ${mode !== "p" ? `<button class="main alt" id="go-e">続けて遊ぶ：とことん${s.ebest ? `（ベスト ${s.ebest}品）` : ""}</button>` : ""}
+    ${mode === "d" && k === todayKey() && !s.hdays[k] ? `<button class="main alt" id="go-h">上級：6品と7品のおつかい</button>` : ""}
+    <div class="row"><button class="sub" id="go-p">練習する</button><button class="sub" id="go-dex">買い物帳</button></div>
+    ${showKofi ? `<p class="note kofi">楽しめたら、<a href="https://ko-fi.com/satouaaaaa" target="_blank" rel="noopener">Ko-fi でコーヒー1杯の応援</a>をもらえると、新しいゲームづくりの励みになります（任意・遊ぶのはずっと無料）。</p>` : ""}
+    <p class="note"><a href="${FEEDBACK}" target="_blank" rel="noopener">感想を送る</a></p>`;
+  $("back").onclick = home; $("go-p").onclick = practiceMenu; $("go-dex").onclick = dexView;
+  if ($("go-e")) $("go-e").onclick = () => startRun("e");
+  if ($("go-h")) $("go-h").onclick = () => (k === todayKey() ? startRun("h") : home());
+  if ($("go-cal")) $("go-cal").onclick = () => cal(k.slice(0, 7));
+  if ($("share")) {
+    const withUrl = text + "\n" + SITE;
+    $("toX").href = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(withUrl);
+    $("toLine").href = "https://line.me/R/share?text=" + encodeURIComponent(withUrl);
+    const copy = (t) => { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("コピーしました"), () => toast("コピーできませんでした")); };
+    $("copy").onclick = () => copy(withUrl);
+    $("share").onclick = () => { if (navigator.share) navigator.share({ text: withUrl }).catch(() => {}); else copy(withUrl); };
+  }
+  toTop();
+}
+
+// ---- 買い物帳・実績・カレンダー・このゲームについて ----
+function dexView() {
+  const s = load(), n = IDS.filter((x) => s.dex[x]).length;
+  app.innerHTML = `<header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>買い物帳<small>${n}/${IDS.length}品</small></h1></header>
+    <p class="note">かごに入れた品が、売り場ごとに集まります。数字は買った回数です。</p>
+    ${GROUPS.map((g, gi) => `<p class="agrp">${g}</p><div class="dex">${IDS.filter((id) => BY[id].g === gi).map((id) => s.dex[id] ? `<div><span class="e" aria-hidden="true">${BY[id].e}</span><small>${BY[id].n}</small><b>${s.dex[id]}回</b></div>` : `<div class="no" aria-label="まだ"><span class="e" aria-hidden="true">${BY[id].e}</span><small>？</small></div>`).join("")}</div>`).join("")}
+    ${footer()}`;
+  $("back").onclick = home; bindFooter(); toTop();
+}
+function achView() {
+  const s = load(), t = tally(s), got = achGot(s);
+  app.innerHTML = `<header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>実績<small>${got.length}/${ACH.length}</small></h1></header>
+    ${AGRP.map((g, gi) => `<p class="agrp">${g}</p><div class="alist">${ACH.filter((a) => a[3] === gi).map((a) => { const ok = got.includes(a[0]), n = Math.min(t[a[4]], a[5]); return `<div class="ach${ok ? " got" : ""}" data-id="${a[0]}"><span class="ic">🏅</span><b>${a[1]}</b><span class="pg">${ok ? "達成" : `${n}/${a[5]}`}</span><small>${a[2]}</small>${ok ? "" : `<span class="bar"><i style="width:${Math.round((n / a[5]) * 100)}%"></i></span>`}</div>`; }).join("")}</div>`).join("")}
+    ${footer()}`;
+  $("back").onclick = home; bindFooter(); toTop();
+}
+const ymOf = (k) => k.slice(0, 7);
+const ymAdd = (ym, n) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + n, 1)).toISOString().slice(0, 7);
+const lvOf = (rec) => (rec && Array.isArray(rec.m) ? starsOf(sumOf(rec)) : 1);
+function cal(ym) {
+  const s = load(), k = todayKey(), late = lateDays(s, k), st = streak(s.days);
+  if (!ym || ym > ymOf(k)) ym = ymOf(k);
+  if (ym < ymOf(EPOCH)) ym = ymOf(EPOCH);
+  const y = +ym.slice(0, 4), m = +ym.slice(5, 7), dow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), n = new Date(Date.UTC(y, m, 0)).getUTCDate(), cells = [];
+  for (let i = 0; i < dow; i++) cells.push(`<span class="c off"></span>`);
+  for (let d = 1; d <= n; d++) {
+    const key = `${ym}-${String(d).padStart(2, "0")}`, rec = s.days[key], ar = (s.adays || {})[key], hd = s.hdays[key] ? `<span class="hd">上</span>` : "";
+    if (rec) { const lv = lvOf(rec); cells.push(`<span class="c p${lv}" data-k="${key}" aria-label="${m}月${d}日 星${lv}つ">${d}<i>${"★".repeat(lv)}</i>${hd}</span>`); }
+    else if (ar) cells.push(`<span class="c late" data-k="${key}" aria-label="${m}月${d}日 あとから遊んだ">${d}<i>↺</i></span>`);
+    else if (late.includes(key)) { const go = s.runs[runKey("a", key)]; cells.push(`<button class="c miss" data-k="${key}" aria-label="${m}月${d}日をあとから遊ぶ${go ? "（続きから）" : ""}">${d}<i>${go ? "続き" : "▶"}</i></button>`); }
+    else cells.push(`<span class="c${key === k ? " today" : ""}" data-k="${key}">${d}</span>`);
+  }
+  app.innerHTML = `<header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>カレンダー${st >= 1 ? `<small>連続 ${st}日・合わせて ${playedDays(s)}日</small>` : playedDays(s) ? `<small>合わせて ${playedDays(s)}日</small>` : ""}</h1></header>
+    <div class="calnav"><button class="sub" id="prev" aria-label="前の月"${ym <= ymOf(EPOCH) ? " disabled" : ""}>‹</button><b>${y}年${m}月</b><button class="sub" id="next" aria-label="次の月"${ym >= ymOf(k) ? " disabled" : ""}>›</button></div>
+    <div class="cal">${["日", "月", "火", "水", "木", "金", "土"].map((w) => `<span class="wd">${w}</span>`).join("")}${cells.join("")}</div>
+    <div class="legend"><span><em style="background:var(--ok)"></em>まちがいなし</span><span><em style="background:#ecd9a8"></em>1〜2回</span><span>↺ あとから</span><span>上 上級</span></div>
+    ${late.length ? `<p class="note">▶ の日は、その日のおつかいをあとから遊べます（過去7日まで・連続の日には数えません）。</p>` : ""}
+    ${footer()}`;
+  $("back").onclick = home; $("prev").onclick = () => cal(ymAdd(ym, -1)); $("next").onclick = () => cal(ymAdd(ym, 1));
+  document.querySelectorAll(".cal .miss").forEach((b) => (b.onclick = () => (lateDays(load()).includes(b.dataset.k) ? startRun("a", b.dataset.k) : cal(ym))));
+  bindFooter(); toTop();
+}
+// 研究で分かっていることを、言い切らずに伝える（医療の効果はうたわない）
+function about() {
+  app.innerHTML = `<header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>このゲームについて</h1></header>
+    <div class="about" id="about">
+      <h3>頭を使う習慣づくりに</h3>
+      <p>覚える・選ぶ・計算する・あとで思い出す、を毎日のおつかいの形で練習します。時間制限はありません。</p>
+      <h3>研究で分かっていること</h3>
+      <ul>
+        <li>WHO（世界保健機関）の指針（2019年）は、頭の訓練を「勧めてもよい」としています。ただし根拠の確かさは「とても低い〜低い」とされています。</li>
+        <li>認知症になる危険を下げると考えられているのは、運動・血圧の管理・禁煙・聞こえの手当て・人との交流など、暮らし全体の習慣です。</li>
+        <li>パソコンを使った頭の訓練は、健康な高齢の人の物覚えなどを少し良くするという研究のまとめがあります。一人だけより、人といっしょのほうが効果が見えやすいとされています。</li>
+      </ul>
+      <p>このゲームは医療機器ではなく、認知症を予防したり治したりするものではありません。散歩や家族・友人とのおしゃべりと、いっしょにどうぞ。気になることがあれば、かかりつけの医師に相談してください。</p>
+      <p>出典：<a href="https://www.who.int/publications/i/item/9789241550543" target="_blank" rel="noopener">WHO 2019 指針</a>・<a href="https://doi.org/10.1016/S0140-6736(24)01296-0" target="_blank" rel="noopener">Lancet 委員会 2024</a>・<a href="https://doi.org/10.1371/journal.pmed.1001756" target="_blank" rel="noopener">Lampit ほか 2014</a></p>
+    </div>${footer()}`;
+  $("back").onclick = home; bindFooter(); toTop();
+}
+
+window.__om = { mode: () => MODE, load, save, todayKey, dayNo, lateDays, ACH, achGot, nextAch, tally, shareText, streak, cur: () => cur, play: (m) => { if (m) MODE = m; play(); }, home, cal, EPOCH, KEY };
+home();
+if ("serviceWorker" in navigator && location.protocol === "https:" && /github\.io$/.test(location.hostname)) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

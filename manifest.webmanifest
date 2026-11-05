@@ -1,0 +1,17 @@
+{
+  "name": "おつかいメモ",
+  "short_name": "おつかいメモ",
+  "description": "買い物メモを覚えて、選んで、計算して、思い出す。1日3回のおつかいで頭を使う習慣を",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6efe1",
+  "theme_color": "#f6efe1",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
