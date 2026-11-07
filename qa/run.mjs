@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import { checkTransfer } from "./transfer-check.mjs";
 import { spawnSync } from "node:child_process";
+import { checkSwStall } from "./sw-check.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const url = pathToFileURL(path.join(root, "index.html")).href;
@@ -77,6 +78,7 @@ const html = readFileSync(path.join(root, "index.html"), "utf8"), game = readFil
   check("感想フォームの name が3字以上（2字だと白紙の Issue になる。shared-workflows incidents/2026-11-05-feedback-form-not-shown.md）", [...((fy.match(/^name:\s*(.+)$/m) || [])[1] || "").trim()].length >= 3 && /^description:\s*\S/m.test(fy));
   check("感想フォームは名前・メールを聞かない", /id: fun/.test(fy) && /id: good/.test(fy) && /id: fix/.test(fy) && !/id: (name|email|mail)/.test(fy) && /labels: \["感想"\]/.test(fy));
   const sw = readFileSync(path.join(root, "sw.js"), "utf8"), mf = JSON.parse(readFileSync(path.join(root, "manifest.webmanifest"), "utf8"));
+  { const st = await checkSwStall(sw); check("PWA：本文の途中で通信が止まっても4秒で保存したものを返す・ふつうはネットの返事", st.ok, JSON.stringify(st)); }
   const shell = JSON.parse(sw.match(/SHELL = (\[[^\]]+\])/)[1]);
   check("PWA：sw.js は画面のファイルを全部保存し（引き継ぎの transfer.js も）、外へ何も送らない", ["./index.html", "./game.js", "./transfer.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"].every((f) => shell.includes(f)) && !/https?:\/\//.test(sw.replace(/^\/\/.*$/gm, "")) && /k\.startsWith\("otsukai-"\)/.test(sw));
   check("PWA：manifest にアイコン2つと名前がある", mf.name === "おつかいメモ" && mf.icons.length >= 2 && mf.start_url === "./");
