@@ -414,7 +414,8 @@ function load() {
   return s;
 }
 // 保存の前に読み直す（別のタブで進めた記録を消さない）
-function save(fn) { const s = load(); fn(s); s.t = Math.max(Date.now(), (s.t || 0) + 1); const j = JSON.stringify(s); try { localStorage.setItem(KEY, j); mem = null; } catch (e) { mem = j; } return s; }
+let saveWarned = false; // 保存に失敗したら、遊んでいる途中でも1回知らせる（黙って記録が消えないように）
+function save(fn) { const s = load(); fn(s); s.t = Math.max(Date.now(), (s.t || 0) + 1); const j = JSON.stringify(s); try { localStorage.setItem(KEY, j); mem = null; saveWarned = false; } catch (e) { mem = j; if (!saveWarned) { saveWarned = true; setTimeout(() => toast("この端末に記録を保存できませんでした。ページを開き直すと、いまの記録が消えます"), 0); } } return s; }
 function streak(days) { let k = todayKey(), n = 0; if (!days[k]) k = prevDay(k); while (days[k]) { n++; k = prevDay(k); } return n; }
 const playedDays = (s) => new Set([...Object.keys(s.days), ...Object.keys(s.adays || {})]).size;
 // 取りこぼした日：今日より前の7日のうち、今日のおつかいもあとからも遊んでいない日（始めた日より前は無い）
