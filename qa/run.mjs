@@ -336,6 +336,10 @@ try {
     const sample = { "otsukai-v1": JSON.stringify({ v: 1, days: { "2026-11-10": { m: [0, 1, 0], h: [0, 0, 0], c: [0, 0, 0], r: [3, 3, 0] } }, hdays: {}, adays: {}, dex: { carrot: 2, apple: 1 }, runs: {}, tut: true, kofi: {}, ebest: 5, calc: 3, trips: 3, t: 1 }), "otsukai-fs": "2" };
     await checkTransfer({ browser, url, game: "otsukai-memo", sample, check, open: async (p) => { if (await p.locator("#howto[open]").count()) await p.click("#howto-ok"); } }); // 初めての端末では遊び方が開いているので閉じてから
   } catch (e) { check("引き継ぎの検査が最後まで完了する", false, e.message.split("\n")[0]); }
+  // 保存に失敗したら知らせる（2026-11-07 暑さ指数よみで見つけた。黙って記録が消えないように）
+  { const ps = await browser.newPage(); await ps.goto(url); await ps.waitForTimeout(200);
+    check("保存に失敗したら、遊んでいる途中でも知らせる（1回だけ）", await ps.evaluate(async () => { const orig = Storage.prototype.setItem; Storage.prototype.setItem = function () { throw new Error("full"); }; const n0 = document.querySelectorAll(".toast").length; save(() => {}); save(() => {}); await new Promise((r) => setTimeout(r, 50)); const ts = [...document.querySelectorAll(".toast")].slice(n0).map((d) => d.textContent); Storage.prototype.setItem = orig; save(() => {}); return ts.length === 1 && ts[0].includes("保存できませんでした"); }));
+    await ps.close(); }
   await browser.close();
 }
 // 見やすさ・読みやすさ（shared-workflows template/qa/a11y.mjs。コントラスト・字間・動き・枠・決めつけの言葉など）
