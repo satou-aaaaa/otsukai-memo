@@ -123,7 +123,9 @@ try {
   const pg = await pageAt(D);
   // 4. 通しで遊ぶ（まちがい・ヒント・続きから・お会計のやり直しを含む）
   check("初めて開くと遊び方が出る", await pg.locator("#howto[open]").count() === 1);
-  await pg.click("#howto-ok");
+  await pg.keyboard.press("Escape"); await pg.waitForTimeout(100); check("遊び方を Esc で閉じられる", await pg.locator("#howto[open]").count() === 0);
+  await pg.reload(); await pg.waitForTimeout(200); check("遊び方を Esc で閉じても、開き直したとき出ない", await pg.locator("#howto[open]").count() === 0);
+  await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); await pg.click("#howto-ok"); await pg.reload(); await pg.waitForTimeout(200); check("遊び方を「わかった」で閉じてすぐ読み直しても出ない", await pg.locator("#howto[open]").count() === 0);
   await pg.evaluate(() => document.documentElement.classList.add("a11y-read")); await pg.click('[data-fs="3"]');
   check("文字の大きさを変えても、見やすさの設定（a11y-read）を消さない", await pg.evaluate(() => document.documentElement.classList.contains("a11y-read") && document.documentElement.classList.contains("fs3") && !document.documentElement.classList.contains("fs1")));
   await pg.click('[data-fs="1"]'); await pg.evaluate(() => document.documentElement.classList.remove("a11y-read"));
