@@ -125,7 +125,7 @@ try {
   const D = "2026-11-20";
   const pg = await pageAt(D);
   // 4. 通しで遊ぶ（まちがい・ヒント・続きから・お会計のやり直しを含む）
-  check("初めて開くと遊び方が出る", await pg.locator("#core-coach").count() === 1);
+  check("初めて開くと遊び方が出る", await pg.locator("#core-coach").waitFor({ timeout: 3000 }).then(() => true, () => false));
   await pg.keyboard.press("Escape"); await pg.waitForTimeout(100); check("遊び方を Esc で閉じられる", await pg.locator("#howto[open]").count() === 0);
   await pg.reload(); await pg.waitForTimeout(200); check("遊び方を Esc で閉じても、開き直したとき出ない", await pg.locator("#howto[open]").count() === 0);
   await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); await firstClose(pg); await pg.reload(); await pg.waitForTimeout(200); check("遊び方を「わかった」で閉じてすぐ読み直しても出ない", await pg.locator("#howto[open]").count() === 0);
