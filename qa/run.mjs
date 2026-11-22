@@ -14,6 +14,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const url = pathToFileURL(path.join(root, "index.html")).href;
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail });
+const firstClose = async (q) => { if (await q.locator("#howto[open]").count()) await q.click("#howto-ok"); if (await q.locator("#core-coach").count()) { await q.evaluate(() => Core.coach.leave()); await q.waitForTimeout(100); } }; // はじめての練習の吹き出しをやめてホームへ（sync-template の migrateFirstQa が足した）
 const OM = createRequire(import.meta.url)(path.join(root, "game.js"));
 const KEY = "otsukai-v1";
 mkdirSync(path.join(root, "qa-report"), { recursive: true });
@@ -124,17 +125,17 @@ try {
   const D = "2026-11-20";
   const pg = await pageAt(D);
   // 4. 通しで遊ぶ（まちがい・ヒント・続きから・お会計のやり直しを含む）
-  check("初めて開くと遊び方が出る", await pg.locator("#howto[open]").count() === 1);
+  check("初めて開くと遊び方が出る", await pg.locator("#core-coach").count() === 1);
   await pg.keyboard.press("Escape"); await pg.waitForTimeout(100); check("遊び方を Esc で閉じられる", await pg.locator("#howto[open]").count() === 0);
   await pg.reload(); await pg.waitForTimeout(200); check("遊び方を Esc で閉じても、開き直したとき出ない", await pg.locator("#howto[open]").count() === 0);
-  await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); await pg.click("#howto-ok"); await pg.reload(); await pg.waitForTimeout(200); check("遊び方を「わかった」で閉じてすぐ読み直しても出ない", await pg.locator("#howto[open]").count() === 0);
+  await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); await firstClose(pg); await pg.reload(); await pg.waitForTimeout(200); check("遊び方を「わかった」で閉じてすぐ読み直しても出ない", await pg.locator("#howto[open]").count() === 0);
   { let again = 0; for (let i = 0; i < 10; i++) { await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); await pg.keyboard.press("Escape"); await pg.reload(); await pg.waitForTimeout(200); again += await pg.locator("#howto[open]").count(); } check("遊び方を Esc で閉じてすぐ読み直しても出ない（10回）", again === 0); }
   { const c = await browser.newContext(); const r = await c.newPage(); const big = []; // 題が h1{flex:1} で縦に伸び（伸びない形と比べて4pxより高ければ失敗）、iPad の縦で大きなすき間が出た（shared-workflows incidents/2026-11-07-title-stretched.md）
     for (const [w, h] of [[820, 1180], [390, 844], [1280, 800]]) { await r.setViewportSize({ width: w, height: h }); await r.goto(url); await r.waitForTimeout(200); await r.keyboard.press("Escape"); await r.waitForTimeout(100);
       const v = await r.evaluate(() => { const e = [...document.querySelectorAll(".title")].find((x) => x.offsetParent); if (!e) return null; const h = e.getBoundingClientRect().height; const f = e.style.flex; e.style.flex = "none"; const n = e.getBoundingClientRect().height; e.style.flex = f; return h - n; });
       if (v === null || v > 4) big.push(`${w}x${h}:${v === null ? "題なし" : "+" + Math.round(v) + "px"}`); }
     check("ホームの題は縦長の画面でも縦に伸びない（820×1180・390×844・1280×800）", big.length === 0, big.join(" ")); await c.close(); }
-  await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); check("「わかった」を押したその場で「見た」が残る", await pg.locator("#howto-ok").evaluate((b) => { b.click(); return Object.keys(localStorage).some((k) => { try { return JSON.parse(localStorage.getItem(k)).tut === true; } catch { return false; } }); }));
+  await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); check("はじめての練習が始まったその場で「見た」が残る", await pg.evaluate(() => { return Object.keys(localStorage).some((k) => { try { return JSON.parse(localStorage.getItem(k)).tut === true; } catch { return false; } }); })); await firstClose(pg);
   await pg.evaluate(() => document.documentElement.classList.add("a11y-read")); await pg.click('[data-fs="3"]');
   check("文字の大きさを変えても、見やすさの設定（a11y-read）を消さない", await pg.evaluate(() => document.documentElement.classList.contains("a11y-read") && document.documentElement.classList.contains("fs3") && !document.documentElement.classList.contains("fs1")));
   await pg.click('[data-fs="1"]'); await pg.evaluate(() => document.documentElement.classList.remove("a11y-read"));
@@ -235,13 +236,13 @@ try {
   await pg.close();
 
   // 8. とことんは🧺3つで終わる
-  { const pe = await pageAt(D); await pe.click("#howto-ok"); await pe.click("#go-e");
+  { const pe = await pageAt(D); await firstClose(pe); await pe.click("#go-e");
     for (let j = 0; j < 3; j++) { const tt = await trip(pe); await pe.click("#ready"); await pe.click(`#shelf .item[data-id="${tt.shelf.find((x) => !tt.items.includes(x))}"]`); for (const id of tt.items) await pe.click(`#shelf .item[data-id="${id}"]`); await pe.waitForSelector("#next"); await pe.click("#next"); }
     check("とことん：まちがえた回が3回で終わり、結果へ", (await pe.locator("#eres").count()) === 1 && !(await pe.evaluate(() => window.__om.load().runs.e)));
     await pe.close(); }
 
   // 9. 実績・カレンダー・あとから
-  { const pa = await pageAt(D); await pa.click("#howto-ok");
+  { const pa = await pageAt(D); await firstClose(pa);
     const a = await pa.evaluate(() => { const g = window.__om; return { n: g.ACH.length, grp: [0, 1, 2].map((x) => g.ACH.filter((y) => y[3] === x).length), none: g.achGot(g.load()).length }; });
     check("実績は12個（腕前・集める・続けるをまぜる）・初めはどれも未達成", a.n === 12 && a.grp.every((x) => x >= 3) && a.none === 0, JSON.stringify(a));
     await pa.click("#go-ach");
@@ -260,7 +261,7 @@ try {
     await pa.close(); }
 
   // 10. 全部まちがいなしの日は Ko-fi が1回だけ・実績が出る
-  { const pk = await pageAt(D); await pk.click("#howto-ok"); await pk.click("#go-d"); await doDay(pk);
+  { const pk = await pageAt(D); await firstClose(pk); await pk.click("#go-d"); await doDay(pk);
     check("今日のおつかいを全部まちがいなし・思い出しも満点で初めて終えると、Ko-fi の1行と実績が出る", (await pk.locator(".kofi").count()) === 1 && (await pk.textContent("#achnew")).includes("まちがいなしの日"));
     await pk.reload();
     check("開き直して結果を見ても Ko-fi はもう出ない", (await pk.locator(".kofi").count()) === 0);
@@ -275,7 +276,7 @@ try {
     await pw.close(); }
 
   // 12. 別のタブで先に進んだら、古い画面の答えは入れない
-  { const p1 = await pageAt(D); await p1.click("#howto-ok"); await p1.click("#go-d"); await p1.click("#ready");
+  { const p1 = await pageAt(D); await firstClose(p1); await p1.click("#go-d"); await p1.click("#ready");
     const p2 = await p1.context().newPage(); p2.on("pageerror", (e) => errors.push(e.stack)); await p2.goto(url); await p2.click("#go-d");
     const tt = await trip(p2); for (const id of tt.items) await p2.click(`#shelf .item[data-id="${id}"]`); await p2.waitForSelector("#pad"); await typeYen(p2, tt.total); await p2.waitForSelector("#next");
     await p1.click(`#shelf .item[data-id="${tt.items[0]}"]`);
@@ -283,7 +284,7 @@ try {
     check("別のタブで先に進んだあと、古いタブで押しても二重に入れない", sx.res.length === 1 && !(sx.cur && sx.cur.got && sx.cur.got.length));
     await p2.close(); await p1.close(); }
   // 12b. 同じ回で別のタブが品を選んだら、古い画面からはその品を消さない（2026-11-05 CodeRabbit）
-  { const p1 = await pageAt(D); await p1.click("#howto-ok"); await p1.click("#go-d"); await p1.click("#ready");
+  { const p1 = await pageAt(D); await firstClose(p1); await p1.click("#go-d"); await p1.click("#ready");
     const p2 = await p1.context().newPage(); p2.on("pageerror", (e) => errors.push(e.stack)); await p2.goto(url); await p2.click("#go-d"); await p2.waitForSelector("#shelf");
     const tt = await trip(p1);
     await p1.click(`#shelf .item[data-id="${tt.items[0]}"]`);
@@ -297,21 +298,21 @@ try {
     await p2.close(); await p1.close(); }
 
   // 13. 文字の大きさ・スマホ幅
-  { const pf = await pageAt(D); await pf.click("#howto-ok");
+  { const pf = await pageAt(D); await firstClose(pf);
     await pf.click('[data-fs="3"]');
     check("文字の大きさを「とても大きい」にすると、文字が大きくなり、開き直しても残る", (await pf.evaluate(() => getComputedStyle(document.documentElement).fontSize)) === "24px" && (await pf.reload(), await pf.evaluate(() => document.documentElement.className)) === "fs3");
     await pf.close(); }
   for (const fs of [1, 3]) for (const w of [320, 390]) {
     const pw = await pageAt(D, w, null, fs), bad = [];
     const look = async (name) => { await pw.screenshot({ path: path.join(root, `qa-report/${name}-${w}-fs${fs}.png`), fullPage: true }); const r = await pw.evaluate(() => ({ over: document.documentElement.scrollWidth > innerWidth, small: [...document.querySelectorAll("button, a")].filter((e) => e.offsetParent && getComputedStyle(e).visibility !== "hidden" && Math.round(e.getBoundingClientRect().height) < 44).map((e) => e.textContent.trim() || e.id) })); if (r.over || r.small.length) bad.push(`${name}:${r.over ? "はみ出し" : ""}${r.small.join("/")}`); };
-    await pw.click("#howto-ok"); await look("home"); await pw.click("#go-d"); await look("memo"); await pw.click("#ready"); await look("shelf");
+    await firstClose(pw); await look("home"); await pw.click("#go-d"); await look("memo"); await pw.click("#ready"); await look("shelf");
     const tt = await trip(pw); for (const id of tt.items) await pw.click(`#shelf .item[data-id="${id}"]`); await pw.waitForSelector("#pad"); await look("pay");
     await typeYen(pw, tt.total); await pw.waitForSelector("#next"); await pw.click("#next"); await doTrip(pw); await pw.click("#next"); await doTrip(pw); await pw.click("#next"); await look("recall"); await doRecall(pw); await look("result");
     await pw.click("#go-dex"); await look("dex"); await pw.click("#back"); await pw.click("#go-ach"); await look("ach"); await pw.click("#back"); await pw.click("#go-cal"); await look("cal"); await pw.click("#back"); await pw.click("#f-about"); await look("about");
     check(`幅${w}px・文字${fs}：どの画面も横にはみ出さず、押せる所は44px以上`, bad.length === 0, bad.join(" "));
     await pw.close();
   }
-  { const pt = await pageAt(D, 320, null, 3); await pt.click("#howto-ok"); await pt.click("#go-p"); await pt.click('[data-n="8"]'); await pt.click("#ready");
+  { const pt = await pageAt(D, 320, null, 3); await firstClose(pt); await pt.click("#go-p"); await pt.click('[data-n="8"]'); await pt.click("#ready");
     const sz = await pt.evaluate(() => [...document.querySelectorAll("#shelf .item")].map((e) => Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height)));
     check("幅320px・文字とても大きい・棚16品でも、品のボタンは56px以上", sz.length === 16 && Math.min(...sz) >= 56, Math.min(...sz).toFixed(0) + "px");
     await pt.close(); }
@@ -321,7 +322,7 @@ try {
   try {
     const pf = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await pf.goto(url); await pf.evaluate(() => localStorage.clear()); await pf.reload();
-    await pf.click("#howto-ok").catch(() => {});
+    await firstClose(pf).catch(() => {});
     const bad = [];
     for (const open of [null, "#go-cal"]) {
       if (open) await pf.click(open);
@@ -334,7 +335,7 @@ try {
   // 引き継ぎコード（別の端末へ記録を移す。shared-workflows template/qa/transfer-check.mjs）
   try {
     const sample = { "otsukai-v1": JSON.stringify({ v: 1, days: { "2026-11-10": { m: [0, 1, 0], h: [0, 0, 0], c: [0, 0, 0], r: [3, 3, 0] } }, hdays: {}, adays: {}, dex: { carrot: 2, apple: 1 }, runs: {}, tut: true, kofi: {}, ebest: 5, calc: 3, trips: 3, t: 1 }), "otsukai-fs": "2" };
-    await checkTransfer({ browser, url, game: "otsukai-memo", sample, check, open: async (p) => { if (await p.locator("#howto[open]").count()) await p.click("#howto-ok"); } }); // 初めての端末では遊び方が開いているので閉じてから
+    await checkTransfer({ browser, url, game: "otsukai-memo", sample, check, open: async (p) => { await firstClose(p); } }); // 初めての端末では遊び方が開いているので閉じてから
   } catch (e) { check("引き継ぎの検査が最後まで完了する", false, e.message.split("\n")[0]); }
   // 保存に失敗したら知らせる（2026-11-07 暑さ指数よみで見つけた。黙って記録が消えないように）
   { const ps = await browser.newPage(); await ps.goto(url); await ps.waitForTimeout(200);
