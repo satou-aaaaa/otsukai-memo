@@ -136,9 +136,9 @@ try {
       if (v === null || v > 4) big.push(`${w}x${h}:${v === null ? "題なし" : "+" + Math.round(v) + "px"}`); }
     check("ホームの題は縦長の画面でも縦に伸びない（820×1180・390×844・1280×800）", big.length === 0, big.join(" ")); await c.close(); }
   await pg.evaluate(() => localStorage.clear()); await pg.reload(); await pg.waitForTimeout(200); check("はじめての練習が始まったその場で「見た」が残る", await pg.evaluate(() => { return Object.keys(localStorage).some((k) => { try { return JSON.parse(localStorage.getItem(k)).tut === true; } catch { return false; } }); })); await firstClose(pg);
-  await pg.evaluate(() => document.documentElement.classList.add("a11y-read")); await pg.click('[data-fs="3"]');
-  check("文字の大きさを変えても、見やすさの設定（a11y-read）を消さない", await pg.evaluate(() => document.documentElement.classList.contains("a11y-read") && document.documentElement.classList.contains("fs3") && !document.documentElement.classList.contains("fs1")));
-  await pg.click('[data-fs="1"]'); await pg.evaluate(() => document.documentElement.classList.remove("a11y-read"));
+  await pg.evaluate(() => A11y.set("read", true)); await pg.click('[data-fs="3"]');
+  check("文字の大きさを変えても、見やすさの設定（a11y-read）を消さない", await pg.evaluate(() => document.documentElement.classList.contains("a11y-read") && document.documentElement.classList.contains("a11y-fs3") && !document.documentElement.classList.contains("a11y-fs1")));
+  await pg.click('[data-fs="1"]'); await pg.evaluate(() => A11y.set("read", false));
   await pg.click("#go-d");
   let t = await trip(pg);
   check("1回目はメモに3品・覚え方のコツが出る・時間制限なし", (await pg.locator("#memo li").count()) === 3 && (await pg.textContent("#memo")).includes(OM.BY[t.items[0]].n) && (await pg.textContent("#tip")).includes("覚え方のコツ") && !/秒|タイマー|制限時間/.test(await pg.textContent("#app")));
@@ -300,7 +300,7 @@ try {
   // 13. 文字の大きさ・スマホ幅
   { const pf = await pageAt(D); await firstClose(pf);
     await pf.click('[data-fs="3"]');
-    check("文字の大きさを「とても大きい」にすると、文字が大きくなり、開き直しても残る", (await pf.evaluate(() => getComputedStyle(document.documentElement).fontSize)) === "24px" && (await pf.reload(), await pf.evaluate(() => document.documentElement.className)) === "fs3");
+    check("文字の大きさを「とても大きい」にすると、文字が大きくなり、開き直しても残る", (await pf.evaluate(() => getComputedStyle(document.documentElement).fontSize)) === "24px" && (await pf.reload(), await pf.evaluate(() => document.documentElement.classList.contains("a11y-fs3"))));
     await pf.close(); }
   for (const fs of [1, 3]) for (const w of [320, 390]) {
     const pw = await pageAt(D, w, null, fs), bad = [];
